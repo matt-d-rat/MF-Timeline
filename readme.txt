@@ -14,6 +14,8 @@ Creates a visual linear timeline representation from your Wordpress posts and ot
 
 In addition to Wordpress content, you can also add content to the timeline from Twitter - filtering by multiple hashtags.
 
+You can set timeline events to be "featured", ie: span across both columns to be more prominent by setting a custom meta field key to mf_timeline_featured and its value to 1. This is great for indicating milestones on the timeline, or highlighting a particular piece of information on the timeline.
+
 Please report all issues or give feedback on the plugin's [Github repository](https://github.com/matt-d-rat/MF-Timeline "MF Timeline Repository").
 
 == Installation ==
@@ -31,6 +33,10 @@ This plugin is for displaying data as a visual linear timeline. I developed the 
 = Can I change the styling of the Timeline? =
 
 By default the plugin is designed to look like Facebook's Profile Timeline - since this is wear I drew my original inspiration from for this plugin, but you are free to style it as you please. The plugin's stylesheets should be enqueued before your theme's stylesheets so simply writing your own CSS should be enough to overwrite the default styles. Alernatively you can always dequeue the plugin's styles by calling `<?php wp_dequeue_style( 'mf_timeline_styles' ) ?>`
+
+= Can I make a timeline event "featured" or "milestone" and span across both columns?
+
+You can make Wordpress content featured on the timeline by setting a custom meta field with the key: mf_timeline_featured and its value set to 1. See screenshot-2.jpg for more information.
 
 = Where can I report an issue or give feedback on the plugin? =
 
@@ -50,6 +56,7 @@ If you have any other ideas for sources I can make available to the timeline the
 == Screenshots ==
 
 1. MF-Timeline output with default "Facebook style" stylesheets applied, pulling content from Twitter and Wordpress.
+2. Showing how to make Wordpress content "featured" on the timeline by setting a custom meta field. (mf_timeline_featured : 1).
 
 == Changelog ==
 

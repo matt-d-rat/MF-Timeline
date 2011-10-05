@@ -4,7 +4,7 @@ Donate link: http://www.aplaceformyhead.co.uk
 Tags: timeline, facebook, twitter, time line, event, stories, story, milestone
 Requires at least: 3.1.3
 Tested up to: 3.2.1
-Stable tag: 1.0
+Stable tag: 1.0.1
 
 Creates a visual linear timeline representation from your Wordpress posts and other media sources in the style of Facebook Profile Timeline.
 
@@ -34,7 +34,7 @@ This plugin is for displaying data as a visual linear timeline. I developed the 
 
 By default the plugin is designed to look like Facebook's Profile Timeline - since this is wear I drew my original inspiration from for this plugin, but you are free to style it as you please. The plugin's stylesheets should be enqueued before your theme's stylesheets so simply writing your own CSS should be enough to overwrite the default styles. Alernatively you can always dequeue the plugin's styles by calling `<?php wp_dequeue_style( 'mf_timeline_styles' ) ?>`
 
-= Can I make a timeline event "featured" or "milestone" and span across both columns?
+= Can I make a timeline event "featured" or "milestone" and span across both columns? =
 
 You can make Wordpress content featured on the timeline by setting a custom meta field with the key: mf_timeline_featured and its value set to 1. See screenshot-2.jpg for more information.
 
@@ -59,6 +59,9 @@ If you have any other ideas for sources I can make available to the timeline the
 2. Showing how to make Wordpress content "featured" on the timeline by setting a custom meta field. (mf_timeline_featured : 1).
 
 == Changelog ==
+
+= 1.0.1 =
+* Fixed character encoding bug when formatting twitter usernames and hashtags.
 
 = 1.0 =
 * Initial release of MF Timeline.

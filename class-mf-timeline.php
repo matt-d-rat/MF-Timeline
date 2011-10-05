@@ -708,8 +708,8 @@ class MF_Timeline {
 			return null;
 		}
 		
-	    $text = preg_replace( "/@(\w+)/", '<a href="http://www.twitter.com/$1" target="_blank">@$1</a>', $text );
-		$text = preg_replace( "/\#(\w+)/", '<a href="http://search.twitter.com/search?q=$1" target="_blank">#$1</a>', $text );
+	    $text = preg_replace( "/(^|\s)@([a-z0-9_]+)/i", '<a href="http://www.twitter.com/$2" target="_blank">&#64;$2</a>', $text );
+		$text = preg_replace( "/([^&]|^)\#([a-z0-9_\-]+)/", ' <a href="http://search.twitter.com/search?q=$2" target="_blank">&#35;$2</a>', $text );
 		
 		return $text;
 	}

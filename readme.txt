@@ -58,6 +58,11 @@ If you have any other ideas for sources I can make available to the timeline the
 1. MF-Timeline output with default "Facebook style" stylesheets applied, pulling content from Twitter and Wordpress.
 2. Showing how to make Wordpress content "featured" on the timeline by setting a custom meta field. (mf_timeline_featured : 1).
 
+== Upgrade Notice ==
+
+= 1.0.1 =
+A new version of MF-Timeline is available. Upgrade to the latest version.
+
 == Changelog ==
 
 = 1.0.1 =
@@ -68,8 +73,5 @@ If you have any other ideas for sources I can make available to the timeline the
 * Supports content from Wordpress and Twitter.
 * Wordpress content can be filtered by multiple post types and taxonomies (including custom).
 * Twitter content can be filtered by multiple hashtags.
-
-== Upgrade Notice ==
-A new version of MF-Timeline is available. Upgrade to the latest version.
 
 == Arbitrary section ==

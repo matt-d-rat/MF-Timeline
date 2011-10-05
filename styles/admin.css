@@ -1,0 +1,36 @@
+form fieldset ul li {
+	margin: 0px 0px 20px 0px;
+}
+
+form fieldset ul li:only-child,
+form fieldset ul li:last-child {
+	margin-bottom: 0px;
+}
+
+hr {
+	background-color: #DFDFDF;
+	border: 0px;
+	height: 1px;
+	margin: 2em 0;
+}
+
+div.categorychecklistbox { 
+	float: left; 
+	margin: 1em 1em 1em 0; 
+}
+ul.categorychecklist { 
+	height: 15em; 
+	width: 20em; 
+	overflow-y: scroll; 
+	border: 1px solid #dfdfdf;
+	padding: 1em; 
+	background: #fff; 
+	border-radius: 4px; 
+	-moz-border-radius: 4px; 
+	-webkit-border-radius: 4px; 
+}
+
+#nav h3 {
+	border-bottom: 1px solid #CCC;
+	padding-bottom: 0;
+}

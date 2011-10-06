@@ -53,15 +53,19 @@ class MF_Timeline {
 	function mf_timeline_js() {
 		$options = get_option( 'mf_timeline' );
 		
-		if( !is_admin() && $options['options']['timeline_nav'] == 1 ) {
-			wp_register_script( 'mf_timeline_afterscroll', plugins_url( 'scripts/js/jquery.afterscroll.min.js', __FILE__), array( 'jquery' ) );
-			wp_enqueue_script( 'mf_timeline_afterscroll' );
+		if( !is_admin() && $options['options']['timeline_nav'] == 1 ) {	
+			if ( function_exists( 'wp_register_script' ) ) {
+				wp_register_script( 'afterscroll', plugins_url( 'scripts/js/jquery.afterscroll.min.js', __FILE__), array( 'jquery' ) );
+				wp_register_script( 'stickyfloat', plugins_url( 'scripts/js/jquery.stickyfloat.min.js', __FILE__ ), array( 'jquery' ) );
+				wp_register_script( 'mf_timeline', plugins_url( 'scripts/js/jquery.mf_timeline.min.js', __FILE__ ), array( 'jquery', 'afterscroll', 'stickyfloat' ), false, true );
+			}
 			
-			wp_register_script( 'mf_timeline_stickyfloat', plugins_url( 'scripts/js/jquery.stickyfloat.min.js', __FILE__ ), array( 'jquery' ) );
-			wp_enqueue_script( 'mf_timeline_stickyfloat' );
-			
-			wp_register_script( 'mf_timeline', plugins_url( 'scripts/js/jquery.mf_timeline.min.js', __FILE__ ), array( 'jquery', 'mf_timeline_afterscroll', 'mf_timeline_stickyfloat' ) );
-			wp_enqueue_script( 'mf_timeline' );
+			if ( function_exists( 'wp_enqueue_script' ) ) {
+				wp_enqueue_script( 'jquery' );
+				wp_enqueue_script( 'afterscroll' );
+				wp_enqueue_script( 'stickyfloat' );
+				wp_enqueue_script( 'mf_timeline' );
+			}	
 		}
 	}
 	

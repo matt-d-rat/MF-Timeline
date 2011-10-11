@@ -23,12 +23,8 @@ class MF_Timeline {
 		add_action( 'wp_print_styles', array( &$this, 'mf_timeline_styles' ) );
 		add_action( 'init', array( &$this, 'mf_timeline_js' ) );
 		add_action( 'admin_head', array( &$this, 'load_tiny_mce' ) );
-		add_action( 'parse_request', array( &$this, 'validate_timeline_stories' ) );
 		
 		register_activation_hook( __FILE__, array( &$this, 'install_db' ) );
-		
-		// Filter Hooks
-		add_filter( 'query_vars', array( &$this, 'mf_timeline_query_vars' ) );
 		
 		// Shortcode
 		add_shortcode( 'mf_timeline', array( &$this, 'shortcode' ) );
@@ -58,7 +54,7 @@ class MF_Timeline {
 		$this->check_db_upgrade($this->latest_db_version);
 		
 		// Hack: For some reason I can't seem to hook the parse_request action, so resorting to this:
-		if( isset( $_POST['story'] ) ) {
+		if( isset( $_POST['story'] ) && !empty( $_POST['story'] ) ) {
 			$this->validate_timeline_stories( $_POST['story'] );
 		}
 	}
@@ -211,22 +207,8 @@ class MF_Timeline {
 	}
 	
 	/**
-	 * MF Timeline Query Vars
-	 * Add all the variables that we want to have parsed by the WP core.
-	 *
-	 * @param array $query_vars The array containing all query variables
-	 * @return array $query_vars The modified array
-	 */
-	public function mf_timeline_query_vars ($query_vars) {
-		$query_vars = array('story_id');
-		return $query_vars;
-	}
-	
-	/**
 	 * Validate Timeline Stories
 	 * Validates the data being submitted from the MF-Timeline stories editor
-	 *
-	 * @param object $wp
 	 *
 	 * @return void
 	 * @author Matt Fairbrass
@@ -234,7 +216,7 @@ class MF_Timeline {
 	public function validate_timeline_stories( $input ) {
 		global $wpdb;
 		$valid_input = array();
-		
+
 		$valid_input['story_title'] = wp_kses_post( $input['story_title'] );
 		$valid_input['story_content'] = wp_kses_post( (string) $input['story_content'] );
 		$valid_input['timeline_date'] = date( 'Y-m-d', strtotime( esc_html( $input['timeline_date'] ) ) );

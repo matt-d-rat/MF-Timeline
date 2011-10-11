@@ -4,7 +4,7 @@ Donate link: http://www.aplaceformyhead.co.uk
 Tags: timeline, facebook, twitter, time line, event, stories, story, milestone
 Requires at least: 3.1.3
 Tested up to: 3.2.1
-Stable tag: 1.0.4
+Stable tag: 1.1
 
 Creates a visual linear timeline representation from your Wordpress posts and other media sources in the style of Facebook Profile Timeline.
 
@@ -28,15 +28,19 @@ Please report all issues or give feedback on the plugin's [Github repository](ht
 
 = What is this plugin for? =
 
-This plugin is for displaying data as a visual linear timeline. I developed the code originally for my work at Clear Books (http://www.clearbooks.co.uk) but decided to develop it some more and turn it into a Wordpress plugin for everyone to use.
+This plugin is for displaying data as a visual linear timeline. I developed the code originally for my work at Clear Books (http://www.clearbooks.co.uk) but decided to develop it some more and turn it into a WordPress plugin for everyone to use.
 
 = Can I change the styling of the Timeline? =
 
-By default the plugin is designed to look like Facebook's Profile Timeline - since this is wear I drew my original inspiration from for this plugin, but you are free to style it as you please. The plugin's stylesheets should be enqueued before your theme's stylesheets so simply writing your own CSS should be enough to overwrite the default styles. Alernatively you can always dequeue the plugin's styles by calling `<?php wp_dequeue_style( 'mf_timeline_styles' ) ?>`
+By default the plugin is designed to look like Facebook's Profile Timeline - since this is wear I drew my original inspiration from for this plugin, but you are free to style it as you please. The plugin's stylesheets should be enqueued before your theme's stylesheets so simply writing your own CSS should be enough to overwrite the default styles. Alternatively you can always dequeue the plugin's styles by calling `<?php wp_dequeue_style( 'mf_timeline_styles' ) ?>`
 
 = Can I make a timeline event "featured" or "milestone" and span across both columns? =
 
 You can make Wordpress content featured on the timeline by setting a custom meta field with the key: mf_timeline_featured and its value set to 1. See screenshot-2.jpg for more information.
+
+= What are Timeline Stories? =
+
+Timeline Stories provide a means of creating content directly for the timeline which will not show up anywhere else on your WordPress blog, without the need for creating standard WordPress posts. Timeline Stories are designed to provide small snippets of information for timeline events - if you wish to create longer posts, I would recommend that you use the standard WordPress post types instead.
 
 = Where can I report an issue or give feedback on the plugin? =
 
@@ -48,10 +52,15 @@ Yes I plan to add a variety of different sources to the plugin in future release
 
 * Flickr
 * Youtube
-* Stories
 * Facebook
 
 If you have any other ideas for sources I can make available to the timeline then please share them with me.
+
+= Uninstalling MF-Timeline =
+
+1. Deactivate the plugin by going to `wp-admin/plugins.php` and pressing Deactivate.
+2. Once deactivated click Delete to remove the plugin files from your WordPress.
+3. Optionally you can also remove the table `mf_timeline_stories` created by the plugin, but you will have to manually do this through MySQL or by using a tool such as PHPMyAdmin.
 
 == Screenshots ==
 
@@ -60,10 +69,18 @@ If you have any other ideas for sources I can make available to the timeline the
 
 == Upgrade Notice ==
 
-= 1.0.4 =
+= 1.1 =
 A new version of MF-Timeline is available. Upgrade to the latest version.
 
 == Changelog ==
+
+= 1.1 =
+* Added support for Timeline Stories. Timeline Stories provide a means of adding content directly to the timeline without the need for creating separate WordPress posts. They are designed to act as snippets of information more than anything - if you plan on creating longer contents, I would recommend you create standard posts instead.
+* Timeline stories support html content and provide a similar user interface to that of WordPress posts with the standard TinyMCE editor.
+* Added custom plugin table mf_timeline_stories to support the new timeline stories feature.
+* Updated plugin support for upgrading database table changes and have tested compatibility with existing plugin usage.
+* Re-factored code to be more clean.
+* Minor bug fixes.
 
 = 1.0.4 =
 * Fixed JS error due to being enqueued before DOM element had been created.

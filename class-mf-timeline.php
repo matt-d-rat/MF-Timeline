@@ -4,6 +4,7 @@ class MF_Timeline {
 	public $pluginPath;
 	public $pluginUrl;
 	public $errors;
+	protected $table_mf_timeline_stories;
 	protected $latest_db_version; // The latest database version
 	
 	public function __construct() {
@@ -11,6 +12,7 @@ class MF_Timeline {
 		$this->pluginUrl = WP_PLUGIN_URL . '/mf-timeline';
 		$this->errors = new WP_Error();
 		
+		$this->table_mf_timeline_stories = $wpdb->prefix . 'mf_timeline_stories';
 		$this->latest_db_version = 1; // Set the latest database version available.
 		
 		// Action Hooks
@@ -18,7 +20,13 @@ class MF_Timeline {
 		add_action( 'admin_init', array( &$this, 'mf_timeline_admin_init') );
 		add_action( 'wp_print_styles', array( &$this, 'mf_timeline_styles' ) );
 		add_action( 'init', array( &$this, 'mf_timeline_js' ) );
-		add_action("admin_head", array( &$this, "load_tiny_mce" ) );
+		add_action( 'admin_head', array( &$this, 'load_tiny_mce' ) );
+		add_action( 'parse_request', array( &$this, 'validate_timeline_stories' ) );
+		
+		register_activation_hook( __FILE__, array( &$this, 'install_db' ) );
+		
+		// Filter Hooks
+		add_filter( 'query_vars', array( &$this, 'mf_timeline_query_vars' ) );
 		
 		// Shortcode
 		add_shortcode( 'mf_timeline', array( &$this, 'shortcode' ) );
@@ -33,7 +41,6 @@ class MF_Timeline {
 	 **/
 	public function mf_timeline_admin_init() {
 		register_setting( 'mf_timeline_settings', 'mf_timeline', array( &$this, 'validate_settings' ) );
-		register_setting( 'mf_timeline_stories', 'mf_timeline_stories', array( &$this, 'validate_timeline_stories' ) );
 		
 		wp_register_script( 'jquery-ui', ("https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"), false, '1.8.16' );
 		wp_register_script( 'mf_timeline_admin_js', plugins_url( 'scripts/js/jquery.mf_timeline_admin.min.js', __FILE__ ), true );
@@ -47,6 +54,11 @@ class MF_Timeline {
 		wp_enqueue_style( 'mf_timeline_admin_styles' );
 		
 		$this->check_db_upgrade($this->latest_db_version);
+		
+		// Hack: For some reason I can't seem to hook the parse_request action, so resorting to this:
+		if( isset( $_POST['story'] ) ) {
+			$this->validate_timeline_stories();
+		}
 	}
 	
 	/**
@@ -96,8 +108,8 @@ class MF_Timeline {
 	 **/
 	public function load_tiny_mce() {
 		wp_tiny_mce( false, array(
-			'editor_selector' => 'mf_timeline[stories][][content]'
-			) 
+			'editor_selector' => 'story[story_content]'
+			)
 		);
 	}
 	
@@ -133,7 +145,7 @@ class MF_Timeline {
 	 * @return $input array the sanitised data.
 	 * @author Matt Fairbrass
 	 **/
-	public function validate_settings($input) {
+	public function validate_settings( $input ) {
 		$valid_input = array();
 		
 		/* General Settings */
@@ -197,15 +209,27 @@ class MF_Timeline {
 	}
 	
 	/**
-	 * Validate Settings
-	 * Validates the data being submitted from the MF-Timeline Settings
+	 * MF Timeline Query Vars
+	 * Add all the variables that we want to have parsed by the WP core.
 	 *
-	 * @param $input array the data to validate
+	 * @param array $query_vars The array containing all query variables
+	 * @return array $query_vars The modified array
+	 */
+	public function mf_timeline_query_vars ($query_vars) {
+		$query_vars = array('story_id');
+		return $query_vars;
+	}
+	
+	/**
+	 * Validate Timeline Stories
+	 * Validates the data being submitted from the MF-Timeline stories editor
 	 *
-	 * @return $input array the sanitised data.
+	 * @param object $wp
+	 *
+	 * @return void
 	 * @author Matt Fairbrass
 	 **/
-	public function validate_timeline_stories($input) {
+	public function validate_timeline_stories() {
 		
 	}
 	
@@ -249,7 +273,7 @@ class MF_Timeline {
 				<h3 class="themes-php">
 					<a class="nav-tab <?php echo $settings_active;?>" href="?page=mf-timeline&amp;tab=settings">Settings</a>
 					<a class="nav-tab <?php echo $stories_active;?>" href="?page=mf-timeline&amp;tab=stories">Timeline Stories</a>
-					<a class="nav-tab <?php echo $maintenance_active;?>" href="?page=mf-timeline&amp;tab=maintenance">Maintenance</a>
+					<a class="nav-tab <?php echo $maintenance_active;?>" href="?page=mf-timeline&amp;tab=maintenance">Upgrade</a>
 				</h3>
 			</div>
 			
@@ -266,7 +290,7 @@ class MF_Timeline {
 					break;
 					
 					case 'maintenance' :
-						
+						$this->get_plugin_maintenance_page();
 					break;
 					
 					case 'settings' :
@@ -387,9 +411,10 @@ class MF_Timeline {
 	 * @return void
 	 * @author Matt Fairbrass
 	 **/
-	public function get_plugin_stories_list_page() { 
-		settings_fields( 'mf_timeline_stories' );
-		$stories = get_option( 'mf_timeline_stories' );
+	public function get_plugin_stories_list_page() {
+		global $wpdb;
+		
+		$stories = $wpdb->get_results( $wpdb->prepare("SELECT * {$this->table_mf_timeline_stories}" ) );
 	?>
 		
 		<p>Timeline stories enable you to add content to the timeline without the need to create individual posts. You can manage all your timeline stores from this area.</p><br />
@@ -414,16 +439,16 @@ class MF_Timeline {
 			</tfoot>
 		
 			<tbody>
-				<?php foreach( $stories as $id=>$story ) :?>
+				<?php foreach( $stories as $story ) :?>
 					<tr>
 						<th scope="row">
-							<?php echo $id;?>
+							<?php echo $story['story_id']; ?>
 						</th>
 						<td class="column-title">
-							<strong><a class="row-title" href="#"><?php $story['title']?></a></strong>
+							<strong><a class="row-title" href="#"><?php $story['story_title']; ?></a></strong>
 							<div class="row-actions">
-								<span class="edit"><a href="?page=mf-timeline&amp;tab=stories&amp;action=editor&amp;story_id=<?php echo $id?>">Edit</a></span>
-								<span class="edit"><a href="?page=mf-timeline&amp;tab=stories&amp;action=delete&amp;story_id=<?php echo $id?>">Delete Permanently</a></span>
+								<span class="edit"><a href="?page=mf-timeline&amp;tab=stories&amp;action=editor&amp;story_id=<?php echo $story['story_id']; ?>">Edit</a></span>
+								<span class="edit"><a href="?page=mf-timeline&amp;tab=stories&amp;action=delete&amp;story_id=<?php echo $story['story_id']; ?>">Delete Permanently</a></span>
 							</div>
 						</td>
 						<td class="column-author">
@@ -449,18 +474,18 @@ class MF_Timeline {
 	 * @author Matt Fairbrass
 	 **/
 	public function get_plugin_stories_editor( $story_id = null ) {
-		settings_fields( 'mf_timeline_stories' );
-		$stories = get_option( 'mf_timeline_stories' );
+		global $wpdb;
 		
-		if( isset( $story_id ) && $story_id != null && !in_array( $stories['story_id'] ) ) {
-			wp_die( __( "Invalid story ID provided. The story you're looking for may have been deleted." ) );
-		}
-		else {
-			unset($story_id);
+		if( isset( $story_id ) && $story_id != null ) {
+			$story = get_row( $wpdb->prepare( "SELECT * FROM {$this->table_mf_timeline_stories} WHERE story_id = %d", $story_id ), 'ARRAY_A' );
+			
+			if( empty( $story ) ) {
+				wp_die( __( 'Invalid timeline story ID. The story you are looking for does not exist in the database.' ) );
+			}
 		}
 	?>
 		<div id="poststuff" class="metabox-holder has-right-sidebar">
-			<form action="#" method="POST">
+			<form action="options-general.php?page=mf-timeline&amp;tab=stories" method="post">
 				<div id="side-info-column" class="inner-sidebar">
 					<div id="side-sortables" class="meta-box-sortables ui-sortable">
 						<div id="submitdiv" class="postbox ">
@@ -476,11 +501,11 @@ class MF_Timeline {
 											<span id="timestamp">
 												<label for="timeline_date">Date:</label>
 											</span>
-											<input type="text" name="mf_timeline[story][timeline_date]" id="timeline_date" value="<?php echo (!empty($options['stories']['timeline_date'])) ? $options['stories']['timeline_date'] : date('d/m/Y', time());?>" />
+											<input type="text" name="story[timeline_date]" id="timeline_date" value="<?php echo ( !empty( $story['timeline_date'] ) ) ? $story['timeline_date'] : date( 'd/m/Y', time() );?>" />
 										</div>
 										
 										<div class="misc-pub-section misc-pub-section-last">
-											<input type="checkbox" name="featured" id="mf_timeline[stories][featured]" value="1" <?php checked('1', $options['stories'][$story_id]['featured']);?> />
+											<input type="checkbox" name="story[featured]" id="featured" value="1" <?php checked( '1', $story['featured'] );?> />
 											<label for="featured">Featured event?</label>
 										</div>
 									</div>
@@ -491,9 +516,10 @@ class MF_Timeline {
 										</div>
 
 										<div id="publishing-action">
-												<input type="submit" accesskey="p" tabindex="5" value="Save Story" class="button-primary" id="save" name="save"></div>
-											<div class="clear">
+												<input type="submit" accesskey="p" tabindex="5" value="Save Story" class="button-primary" id="save" name="save">
 										</div>
+										
+										<div class="clear"></div>
 									</div>
 								</div>
 							</div>
@@ -506,12 +532,12 @@ class MF_Timeline {
 							<ul>
 								<li>
 									<div id="titlediv">
-										<input type="text" name="mf_timeline[stories][<?php echo $story_id?>][title]" id="title" value="<?php echo $options['stories'][$story_id]['title']?>" class="title" placeholder="Enter story title here" tabindex="1" />
+										<input type="text" name="story[story_title]" id="title" value="<?php echo $story['story_title']; ?>" class="title" placeholder="Enter story title here" tabindex="1" />
 									</div>
 								</li>
 								<li>
 									<div id="postdivrich" class="postarea">
-										<?php the_editor( $options['stories'][$story_id]['content'], 'mf_timeline[stories]['.$story_id.'][content]', 'title', true, 2 );?>
+										<?php the_editor( $story['story_content'], 'story[story_content]', 'title', true, 2 );?>
 									</div>
 								</li>
 							</ul>
@@ -521,6 +547,39 @@ class MF_Timeline {
 			</form>
 		</div>
 	<?php	
+	}
+	
+	/**
+	 * Get Plugin Maintenance Page
+	 * Output the options for the plugin maintenance page.
+	 *
+	 * @return void
+	 * @author Matt Fairbrass
+	 **/
+	public function get_plugin_maintenance_page() {
+		$options = get_option( 'mf_timeline' );
+		
+		if( isset( $_GET['action'] ) && $_GET['action'] == 'upgrade' ) {
+			$this->upgrade_db();
+		}
+	?>
+		<p>The maintenance upgrade tool will upgrade your database to the latest version if a newer version is available. Please ensure that you have backed up the <strong>'mf_timeline_stories'</strong> table in your WordPress database <strong>before</strong> running the upgrade tool. I accept no responsibility for any data lost as a result of running the upgrade tool.</p>
+		
+		<ul>
+			<li><strong>Your Version:</strong> <?php echo $options['db_version'];?></li>
+			<li><strong>Latest Version:</strong> <?php echo $this->latest_db_version;?></li>
+		</ul>
+		<br/>
+		<?php if($options['db_version'] < $this->latest_db_version) : ?>
+			<p><strong style="color: #c40f0f;">Your MF-Timeline database is out of date, press the button below to run the upgrade tool.</strong></p>
+			
+			<form action="?page=mf-timeline&amp;tab=maintenance&amp;action=upgrade" method="post">
+				<p><input class="button-primary" type="submit" name="upgrade" value="Run Upgrade" id="submitbutton"></p>
+			</form>
+		<?php else: ?>
+			<p><strong style="color: #008000;">You have the latest MF-Timeline database. Nothing to upgrade :-)</strong></p>
+		<?php endif;?>
+	<?php
 	}
 	
 	/**
@@ -790,7 +849,7 @@ class MF_Timeline {
 	 * @return void
 	 * @author Matt Fairbrass
 	 **/
-	public function get_timeline_nav($years) {
+	public function get_timeline_nav( $years ) {
 		$options = get_option( 'mf_timeline' );
 		
 		if( $options['options']['timeline_nav'] == 1 ) {
@@ -909,8 +968,8 @@ class MF_Timeline {
 	 * @author Matt Fairbrass
 	 **/
 	public function format_text( $text ) {
-		$text = $this->format_text_to_links($text);
-		$text = $this->format_text_to_twitter($text);
+		$text = $this->format_text_to_links( $text );
+		$text = $this->format_text_to_twitter( $text );
 		
 		return $text;
 	}
@@ -925,7 +984,7 @@ class MF_Timeline {
 	 * @author Matt Fairbrass
 	 **/
 	public function format_text_to_links( $text ) {
-		if(empty($text)) {
+		if( empty( $text ) ) {
 			return null;
 		}
 		
@@ -965,13 +1024,13 @@ class MF_Timeline {
 	 * @return void
 	 * @author Matt Fairbrass
 	 **/
-	protected function check_db_upgrade($db_version) {
+	protected function check_db_upgrade( $db_version ) {
 		$options = get_option( 'mf_timeline' );
 
-		if(!isset($options['db_version']) || empty($options['db_version'])) {
+		if( !isset( $options['db_version'] ) || empty( $options['db_version'] ) ) {
 			$this->install_db();
 		}
-		else if($options['db_version'] < $db_version) {
+		else if( $options['db_version'] < $db_version ) {
 			$this->errors->add( 'db_upgrade', __('An upgrade is available for the MF-Timeline database. We recommend that you run the <a href="?page=mf-timeline&amp;tab=maintenance">maintenance upgrade tool</a> immediately to avoid any problems.' ) );
 		}
 	}
@@ -983,11 +1042,10 @@ class MF_Timeline {
 	 * @return void
 	 * @author Matt Fairbrass
 	 **/
-	protected function install_db() {
+	static function install_db() {
 		global $wpdb;
-		$mf_timeline_stories = $wpdb->prefix . 'mf_timeline_stories';
 		
-		$sql = "CREATE TABLE IF NOT EXISTS `{$mf_timeline_stories}` (
+		$sql = "CREATE TABLE IF NOT EXISTS `{$this->table_mf_timeline_stories}` (
 			`story_id` mediumint(9) NOT NULL AUTO_INCREMENT,
 			`story_title` text NOT NULL,
 			`story_content` text,
@@ -1002,10 +1060,13 @@ class MF_Timeline {
 		dbDelta( $sql );
 		
 		// Update the user's db version to version 1 and run the upgrade script.
-		$options = get_option( 'mf_timeline' );
-		$options['db_version'] = 1;
-
-		update_option( 'mf_timeline', $options );
+		if( !isset( $options['db_version'] ) || empty( $options['db_version'] ) ) {
+			$options = get_option( 'mf_timeline' );
+			$options['db_version'] = 1;
+			update_option( 'mf_timeline', $options );
+			
+			$this->upgrade_db();
+		}
 	}
 	
 	/**
@@ -1018,8 +1079,10 @@ class MF_Timeline {
 	protected function upgrade_db() {
 		$options = get_option( 'mf_timeline' );
 		
-		switch( $options['db_version'] ) {
-			
+		if( $options['db_version'] < $this->latest_db_version ) {
+			switch( $options['db_version'] ) {
+				
+			}
 		}
 	}
 }

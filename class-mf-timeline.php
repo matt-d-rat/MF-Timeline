@@ -8,12 +8,14 @@ class MF_Timeline {
 	protected $latest_db_version; // The latest database version
 	
 	public function __construct() {
+		global $wpdb;
+		
 		$this->pluginPath = dirname( __FILE__ );
 		$this->pluginUrl = WP_PLUGIN_URL . '/mf-timeline';
 		$this->errors = new WP_Error();
 		
 		$this->table_mf_timeline_stories = $wpdb->prefix . 'mf_timeline_stories';
-		$this->latest_db_version = 1; // Set the latest database version available.
+		$this->latest_db_version = 2; // Set the latest database version available.
 		
 		// Action Hooks
 		add_action( 'admin_menu', array( &$this, 'admin_menu' ) );
@@ -259,7 +261,8 @@ class MF_Timeline {
 			<div id="icon-options-general" class="icon32"><br></div><h2>MF-Timeline Options</h2>
 			
 			<?php 
-				$errors = $this->errors->get_error_messages();	
+				$errors = $this->errors->get_error_messages();
+				
 				if( !empty( $errors ) ) :
 			?>
 				<?php foreach( $errors as $error ) : ?>
@@ -413,8 +416,7 @@ class MF_Timeline {
 	 **/
 	public function get_plugin_stories_list_page() {
 		global $wpdb;
-		
-		$stories = $wpdb->get_results( $wpdb->prepare("SELECT * {$this->table_mf_timeline_stories}" ) );
+		$stories = $wpdb->get_results( $wpdb->prepare("SELECT * FROM `{$this->table_mf_timeline_stories}`" ), 'ARRAY_A' );
 	?>
 		
 		<p>Timeline stories enable you to add content to the timeline without the need to create individual posts. You can manage all your timeline stores from this area.</p><br />
@@ -424,7 +426,7 @@ class MF_Timeline {
 			<thead>
 				<tr>
 					<th class="manage-column" scope="col" width="40">ID</th>
-					<th class="manage-column column-title" scope="col">Title</th>
+					<th class="manage-column column-title" scope="col">Story Title</th>
 					<th scope="col" width="75">Author</th>
 					<th scope="col" width="125">Timeline Date</th>
 				</tr>			
@@ -432,7 +434,7 @@ class MF_Timeline {
 			<tfoot>
 				<tr>
 					<th class="manage-column" scope="col" width="40">ID</th>
-					<th class="manage-column column-title" scope="col">Title</th>
+					<th class="manage-column column-title" scope="col">Story Title</th>
 					<th scope="col column-title" width="75">Author</th>
 					<th scope="col column-date" width="125">Timeline Date</th>
 				</tr>			
@@ -445,17 +447,17 @@ class MF_Timeline {
 							<?php echo $story['story_id']; ?>
 						</th>
 						<td class="column-title">
-							<strong><a class="row-title" href="#"><?php $story['story_title']; ?></a></strong>
+							<strong><a class="row-title" href="#"><?php echo $story['story_title']; ?></a></strong>
 							<div class="row-actions">
-								<span class="edit"><a href="?page=mf-timeline&amp;tab=stories&amp;action=editor&amp;story_id=<?php echo $story['story_id']; ?>">Edit</a></span>
+								<span class="edit"><a href="?page=mf-timeline&amp;tab=stories&amp;action=editor&amp;story_id=<?php echo $story['story_id']; ?>">Edit</a> | </span>
 								<span class="edit"><a href="?page=mf-timeline&amp;tab=stories&amp;action=delete&amp;story_id=<?php echo $story['story_id']; ?>">Delete Permanently</a></span>
 							</div>
 						</td>
 						<td class="column-author">
-							<a href="#"><?php echo $story['author']?></a>
+							<a href="#"><?php echo $story['story_author']; ?></a>
 						</td>
 						<td>
-							<?php echo $story['timeline_date'];?>
+							<?php echo date( 'm/d/Y', strtotime( $story['timeline_date'] ) );?>
 						</td>
 					</tr>
 				<?php endforeach;?>
@@ -556,12 +558,12 @@ class MF_Timeline {
 	 * @return void
 	 * @author Matt Fairbrass
 	 **/
-	public function get_plugin_maintenance_page() {
-		$options = get_option( 'mf_timeline' );
-		
+	public function get_plugin_maintenance_page() {		
 		if( isset( $_GET['action'] ) && $_GET['action'] == 'upgrade' ) {
 			$this->upgrade_db();
 		}
+		
+		$options = get_option( 'mf_timeline' );
 	?>
 		<p>The maintenance upgrade tool will upgrade your database to the latest version if a newer version is available. Please ensure that you have backed up the <strong>'mf_timeline_stories'</strong> table in your WordPress database <strong>before</strong> running the upgrade tool. I accept no responsibility for any data lost as a result of running the upgrade tool.</p>
 		
@@ -1077,12 +1079,29 @@ class MF_Timeline {
 	 * @author Matt Fairbrass
 	 **/
 	protected function upgrade_db() {
+		global $wpdb;
 		$options = get_option( 'mf_timeline' );
 		
 		if( $options['db_version'] < $this->latest_db_version ) {
-			switch( $options['db_version'] ) {
-				
+			switch( true ) {
+				/**
+				 * Version: 2
+				 * Purpose: Added author column to the stories table.
+				 * @author Matt Fairbrass
+				 */
+				case ($options['db_version'] < 2) :
+					$sql = "ALTER TABLE {$this->table_mf_timeline_stories} ADD `story_author` BIGINT( 20 ) UNSIGNED NOT NULL DEFAULT '0',
+					ADD INDEX (  `story_author` )";
+					
+					if( $wpdb->query($sql) !== false ) {
+						$options['db_version'] = 2;
+					}
 			}
+			
+			unset( $this->errors->errors['db_upgrade'] ); // Remove the error about upgrading db.
+			update_option( 'mf_timeline', $options );
+			
+			header( 'Location:' . $_SERVER['REQUEST_URI'] );
 		}
 	}
 }

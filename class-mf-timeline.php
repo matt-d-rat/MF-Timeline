@@ -252,13 +252,13 @@ class MF_Timeline {
 			wp_die( __( 'You do not have sufficient permissions to access this page.' ) );
 		}
 		
-		if( $_GET['tab'] == 'settings' || empty( $_GET['tab'] ) ) {
+		if( isset( $_GET['tab'] ) && $_GET['tab'] == 'settings' || !isset( $_GET['tab'] ) ) {
 			$settings_active = 'nav-tab-active';
 		}
-		else if( $_GET['tab'] == 'stories' ) {
+		else if( isset( $_GET['tab'] ) && $_GET['tab'] == 'stories' ) {
 			$stories_active = 'nav-tab-active';
 		}
-		else if( $_GET['tab'] == 'maintenance') {
+		else if( isset( $_GET['tab'] ) && $_GET['tab'] == 'maintenance') {
 			$maintenance_active = 'nav-tab-active';
 		}
 	?>
@@ -286,13 +286,15 @@ class MF_Timeline {
 			</div>
 			
 			<?php
-				switch( $_GET['tab'] ) {
+				$active_tab = ( isset( $_GET['tab'] ) ) ? $_GET['tab'] : null;
+				
+				switch( $active_tab ) {
 					case 'stories' :
-						if( $_GET['action'] == 'editor' ) {
-							$story_id = (int) $_GET['story_id'];
+						if( isset( $_GET['action'] ) && $_GET['action'] == 'editor' ) {
+							$story_id = ( isset( $_GET['story_id'] ) ) ? (int) $_GET['story_id'] : null;
 							$this->get_plugin_stories_editor( $story_id );
 						}
-						else if( $_GET['action'] == 'delete' ) {
+						else if( isset( $_GET['action'] ) && $_GET['action'] == 'delete' ) {
 							$story_id = (int) $_GET['story_id'];
 							$this->delete_story( $story_id );
 							$this->get_plugin_stories_list_page();
@@ -329,7 +331,10 @@ class MF_Timeline {
 		<p>Configure the default MF-Timeline settings below. You can override these settings when calling the shortcode in your posts or the function in your templates.</p>
 	
 		<form action="options.php" method="POST">
-			<?php 
+			<?php
+				global $wp_taxonomies, $wp;
+				$nonhierarchical = null;
+				
 				settings_fields( 'mf_timeline_settings' );
 				$options = get_option( 'mf_timeline' );
 			?>
@@ -361,7 +366,7 @@ class MF_Timeline {
 					<li>
 						<h4>Filter by the following taxonomies:</h4>
 						<p class="description clear">Leave blank to not filter by taxonomies.</p>
-						<?php global $wp_taxonomies; ?>
+						
 						<?php if ( is_array( $wp_taxonomies ) ) : ?>
 							<?php foreach ( $wp_taxonomies as $tax ) :?>
 								<?php if ( !in_array( $tax->name, array( 'nav_menu', 'link_category', 'podcast_format' ) ) ) : ?>
@@ -402,11 +407,11 @@ class MF_Timeline {
 				<ul>
 					<li>
 						<label for="mf_timeline[options][twitter][content][username]"><strong>Twitter Username:</strong></label><br/>
-						<input type="text" name="mf_timeline[options][twitter][content][username]" id="mf_timeline[options][twitter][content][username]" value="<?php echo $options['options']['twitter']['content']['username'];?>" />
+						<input type="text" name="mf_timeline[options][twitter][content][username]" id="mf_timeline[options][twitter][content][username]" value="<?php echo ( !empty( $options['options']['twitter']['content']['username'] ) ) ? $options['options']['twitter']['content']['username'] : null;?>" />
 					</li>
 					<li>
 						<label for="mf_timeline[options][twitter][filter][tags]"><strong>Filter by the following hashtags:</strong></label><br/>
-						<input type="text" name="mf_timeline[options][twitter][filter][tags]" id="mf_timeline[options][twitter][filter][tags]" value="<?php echo $options['options']['twitter']['filter']['tags'];?>" />
+						<input type="text" name="mf_timeline[options][twitter][filter][tags]" id="mf_timeline[options][twitter][filter][tags]" value="<?php echo ( !empty( $options['options']['twitter']['filter']['tags']) ) ? $options['options']['twitter']['filter']['tags'] : null;?>" />
 						<span class="description">Separate tags with commas. Leave blank to not filter by any tags.</span>
 					</li>
 				</ul>
@@ -544,11 +549,16 @@ class MF_Timeline {
 							<ul>
 								<li>
 									<div id="titlediv">
-										<input type="text" name="story[story_title]" id="title" value="<?php echo $story['story_title']; ?>" class="title" placeholder="Enter story title here" tabindex="1" />
+										<input type="text" name="story[story_title]" id="title" value="<?php echo ( isset( $story['story_title'] ) ) ? $story['story_title'] : null; ?>" class="title" placeholder="Enter story title here" tabindex="1" />
 									</div>
 								</li>
 								<li>
 									<div id="postdivrich" class="postarea">
+										<?php 
+											if( !isset( $story['story_content'] ) ) {
+												$story['story_content'] = null;
+											}
+										?>
 										<?php the_editor( $story['story_content'], 'story[story_content]', 'title', true, 2 );?>
 									</div>
 								</li>
@@ -709,6 +719,9 @@ class MF_Timeline {
 		
 			return $posts;
 		}
+		else {
+			return null;
+		}
 	}
 	
 	/**
@@ -763,6 +776,9 @@ class MF_Timeline {
 			
 			return $tweets;
 		}
+		else {
+			return null;
+		}
 	}
 	
 	/**
@@ -787,6 +803,9 @@ class MF_Timeline {
 			
 			return $stories;
 		}
+		else {
+			return null;
+		}
 	}
 	
 	/**
@@ -800,21 +819,23 @@ class MF_Timeline {
 	 * @author Matt Fairbrass
 	 **/
 	public function get_timeline_events() {
-		$posts = $this->get_content_posts();
-		$tweets = $this->get_content_tweets();
-		$stories = $this->get_content_stories();
+		$contents[] = $this->get_content_posts();
+		$contents[] = $this->get_content_tweets();
+		$contents[] = $this->get_content_stories();
 		
 		$events = array();
 		
-		// Create an array of years based on the years avaialble from the content sources
-		$years = array_unique( array_merge( (array) array_keys( $tweets ), (array) array_keys( $posts ), (array) array_keys( $stories ) ) );		
-		
-		if( empty( $posts ) && empty( $tweets ) && empty( $stories ) ) {
-			return false;
-		}
-		else {
-			foreach( $years as $year ) {
-			    $events[$year] = array_merge( (array) $posts[$year], (array) $tweets[$year], (array) $stories[$year] );
+		// Process each of the contents we have attempted to grab and combine them as events by year.
+		foreach( $contents as $content ) {
+			if( is_array ( $content ) ) {
+				foreach ( $content as $year => $values ) {
+					if( empty( $events[$year] ) || !isset( $events[$year] ) ) {
+						$events[$year] = $values;
+					}
+					else {
+						$events[$year] = array_merge( $events[$year], $values);
+					}
+				}
 			}
 		}
 		
@@ -847,7 +868,7 @@ class MF_Timeline {
 	 **/
 	public function get_timeline() {
 		$events = $this->get_timeline_events();
-		
+		$class = null;
 		$html = '<div class="timeline">';
 			$html .= '<a href="#" class="timeline_spine"></a>';
 			
@@ -889,7 +910,7 @@ class MF_Timeline {
 								break;
 								
 								case 'twitter' :
-									$html .= '<li class="event ' . $event['source'] . $class . '">';
+									$html .= '<li class="event ' . $event['source'] . '">';
 										$html .= '<div class="event_pointer"></div>';
 										$html .= '<div class="event_container">';
 											$html .= '<div class="event_title">';
@@ -1052,7 +1073,7 @@ class MF_Timeline {
 		
 		$text = $this->format_text( $text );
 		
-	    return apply_filters( 'wp_trim_excerpt', $text, $raw_excerpt );
+	    return apply_filters( 'wp_trim_excerpt', $text );
 	}
 	
 	

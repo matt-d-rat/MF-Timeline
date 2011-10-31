@@ -3,31 +3,20 @@ class MF_Timeline {
 	public $years = array();
 	public $pluginPath;
 	public $pluginUrl;
-	public $errors;
-	protected $table_mf_timeline_stories;
-	protected $latest_db_version; // The latest database version
 	
 	public function __construct() {
-		global $wpdb;
-		
 		$this->pluginPath = dirname( __FILE__ );
 		$this->pluginUrl = WP_PLUGIN_URL . '/mf-timeline';
-		$this->errors = new WP_Error();
-		
-		$this->table_mf_timeline_stories = $wpdb->prefix . 'mf_timeline_stories';
-		$this->latest_db_version = 2; // Set the latest database version available.
 		
 		// Action Hooks
 		add_action( 'admin_menu', array( &$this, 'admin_menu' ) );
 		add_action( 'admin_init', array( &$this, 'mf_timeline_admin_init') );
 		add_action( 'wp_print_styles', array( &$this, 'mf_timeline_styles' ) );
 		add_action( 'init', array( &$this, 'mf_timeline_js' ) );
-		add_action( 'admin_head', array( &$this, 'load_tiny_mce' ) );
-		
-		register_activation_hook( __FILE__, array( &$this, 'install_db' ) );
+		add_action("admin_head", array( &$this, "load_tiny_mce" ) );
 		
 		// Shortcode
-		add_shortcode( 'mf_timeline', array( &$this, 'shortcode' ) );
+		add_shortcode( 'mf_timeline', array( &$this, 'shortcode' ) );  
 	}
 	
 	/**
@@ -39,24 +28,10 @@ class MF_Timeline {
 	 **/
 	public function mf_timeline_admin_init() {
 		register_setting( 'mf_timeline_settings', 'mf_timeline', array( &$this, 'validate_settings' ) );
-		
-		wp_register_script( 'jquery-ui', ("https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"), false, '1.8.16' );
-		wp_register_script( 'mf_timeline_admin_js', plugins_url( 'scripts/js/jquery.mf_timeline_admin.min.js', __FILE__ ), true );
 		wp_register_style( 'mf_timeline_admin_styles', plugins_url( 'styles/admin.min.css', __FILE__ ) );
-		wp_register_style( 'jquery-ui', plugins_url( 'styles/jquery-ui/theme-wordpress.css', __FILE__ ) );
-		 
-		wp_enqueue_script( array( 'jquery', 'editor', 'thickbox', 'media-upload' ) );
-		wp_enqueue_script( 'jquery-ui' );
-		wp_enqueue_style( 'jquery-ui' );
-		wp_enqueue_script( 'mf_timeline_admin_js' );
 		wp_enqueue_style( 'mf_timeline_admin_styles' );
-		
-		$this->check_db_upgrade($this->latest_db_version);
-		
-		// Hack: For some reason I can't seem to hook the parse_request action, so resorting to this:
-		if( isset( $_POST['story'] ) && !empty( $_POST['story'] ) ) {
-			$this->validate_timeline_stories( $_POST['story'] );
-		}
+		wp_enqueue_script( array( 'jquery', 'editor', 'thickbox', 'media-upload' ) );
+		wp_enqueue_style( 'thickbox' );
 	}
 	
 	/**
@@ -106,8 +81,8 @@ class MF_Timeline {
 	 **/
 	public function load_tiny_mce() {
 		wp_tiny_mce( false, array(
-			'editor_selector' => 'story[story_content]'
-			)
+			'editor_selector' => 'mf_timeline[stories][][content]'
+			) 
 		);
 	}
 	
@@ -143,18 +118,17 @@ class MF_Timeline {
 	 * @return $input array the sanitised data.
 	 * @author Matt Fairbrass
 	 **/
-	public function validate_settings( $input ) {
+	public function validate_settings($input) {
 		$valid_input = array();
 		
 		/* General Settings */
 		$valid_input['options']['timeline_nav'] = ( $input['options']['timeline_nav'] == 1 ? 1 : 0 );
-		$valid_input['db_version'] = $input['db_version'];
 		
 		/* Wordpress */
 		if( !empty( $input['options']['wp']['content'] ) || !empty( $input['options']['wp']['filter'] ) ) {
 			// Content
 			foreach( $input['options']['wp']['content'] as $key=>$value ) {
-				$valid_input['options']['wp']['content'][$key] = (int) ( $value == 1 ? 1 : 0 );
+				$valid_input['options']['wp']['content'][$key] = ( $value == 1 ? 1 : 0 );
 			}
 			
 			// Filters
@@ -162,7 +136,7 @@ class MF_Timeline {
 				foreach( $value as $id=>$val ) {
 					switch( $filter ) {
 						case 'taxonomy' :
-							$valid_input['options']['wp']['filter']['taxonomy'][$id] = (int) ( $val == 1 ? 1 : 0 );
+							$valid_input['options']['wp']['filter']['taxonomy'][$id] = ( $val == 1 ? 1 : 0 );
 						break;
 					
 						default :
@@ -202,44 +176,8 @@ class MF_Timeline {
 				}
 			}
 		}
-
+		
 		return $valid_input;
-	}
-	
-	/**
-	 * Validate Timeline Stories
-	 * Validates the data being submitted from the MF-Timeline stories editor
-	 *
-	 * @return void
-	 * @author Matt Fairbrass
-	 **/
-	public function validate_timeline_stories( $input ) {
-		global $wpdb;
-		$valid_input = array();
-
-		$valid_input['story_title'] = wp_kses_post( $input['story_title'] );
-		$valid_input['story_content'] = wp_kses_post( (string) $input['story_content'] );
-		$valid_input['timeline_date'] = date( 'Y-m-d', strtotime( esc_html( $input['timeline_date'] ) ) );
-		$valid_input['featured'] = (int) ( isset( $input['featured'] ) && $input['featured'] == 1 ? 1 : 0 );
-		$valid_input['story_modified'] = date( 'Y-m-d H:i:s' );
-		$valid_input['story_author'] = (int) $input['story_author'];
-		
-		
-		
-		if( $input['story_id'] == null ) {
-			$result = $wpdb->insert( $this->table_mf_timeline_stories, $valid_input, array( '%s','%s','%s','%d','%s','%d' ) );
-		}
-		else {
-			$story_id = (int) $input['story_id'];
-			$result = $wpdb->update( $this->table_mf_timeline_stories, $valid_input, array( 'story_id' => $story_id ), array( '%s','%s','%s','%d','%s','%d' ), '%d' );
-		}
-		
-		if($result === false) {
-			$this->errors->add( 'timeline_story', __( 'An error occurred whilst attempting to save timeline story to the database.' ) );
-		}
-		else {
-			add_settings_error('general', 'settings_updated', __('Timeline story saved.'), 'updated');
-		}
 	}
 	
 	/**
@@ -254,60 +192,33 @@ class MF_Timeline {
 			wp_die( __( 'You do not have sufficient permissions to access this page.' ) );
 		}
 		
-		if( isset( $_GET['tab'] ) && $_GET['tab'] == 'settings' || !isset( $_GET['tab'] ) ) {
+		if( $_GET['tab'] == 'settings' || !isset($_GET['tab'] ) ) {
 			$settings_active = 'nav-tab-active';
 		}
-		else if( isset( $_GET['tab'] ) && $_GET['tab'] == 'stories' ) {
+		else if( $_GET['tab'] == 'stories' ) {
 			$stories_active = 'nav-tab-active';
-		}
-		else if( isset( $_GET['tab'] ) && $_GET['tab'] == 'maintenance') {
-			$maintenance_active = 'nav-tab-active';
 		}
 	?>
 		<div class="wrap">
 			<div id="icon-options-general" class="icon32"><br></div><h2>MF-Timeline Options</h2>
 			
-			<?php 
-				$errors = $this->errors->get_error_messages();
-				
-				if( !empty( $errors ) ) :
-			?>
-				<?php foreach( $errors as $error ) : ?>
-						<div class="error">
-							<p><strong><?php echo $error; ?></strong></p>
-						</div>
-				<?php endforeach; ?>
-			<?php endif;?>
-			
 			<div id="nav">
 				<h3 class="themes-php">
 					<a class="nav-tab <?php echo $settings_active;?>" href="?page=mf-timeline&amp;tab=settings">Settings</a>
 					<a class="nav-tab <?php echo $stories_active;?>" href="?page=mf-timeline&amp;tab=stories">Timeline Stories</a>
-					<a class="nav-tab <?php echo $maintenance_active;?>" href="?page=mf-timeline&amp;tab=maintenance">Upgrade</a>
 				</h3>
 			</div>
 			
 			<?php
-				$active_tab = ( isset( $_GET['tab'] ) ) ? $_GET['tab'] : null;
-				
-				switch( $active_tab ) {
+				switch( $_GET['tab'] ) {
 					case 'stories' :
-						if( isset( $_GET['action'] ) && $_GET['action'] == 'editor' ) {
-							$story_id = ( isset( $_GET['story_id'] ) ) ? (int) $_GET['story_id'] : null;
-							$this->get_plugin_stories_editor( $story_id );
-						}
-						else if( isset( $_GET['action'] ) && $_GET['action'] == 'delete' ) {
+						if( $_GET['action'] == 'editor') {
 							$story_id = (int) $_GET['story_id'];
-							$this->delete_story( $story_id );
-							$this->get_plugin_stories_list_page();
+							$this->get_plugin_stories_editor($story_id);
 						}
 						else {
 							$this->get_plugin_stories_list_page();
 						}
-					break;
-					
-					case 'maintenance' :
-						$this->get_plugin_maintenance_page();
 					break;
 					
 					case 'settings' :
@@ -331,17 +242,11 @@ class MF_Timeline {
 	 **/
 	public function get_plugin_settings_page() { ?>
 		<p>Configure the default MF-Timeline settings below. You can override these settings when calling the shortcode in your posts or the function in your templates.</p>
-	
 		<form action="options.php" method="POST">
-			<?php
-				global $wp_taxonomies, $wp;
-				$nonhierarchical = null;
-				
+			<?php 
 				settings_fields( 'mf_timeline_settings' );
 				$options = get_option( 'mf_timeline' );
 			?>
-			<input type="hidden" name="mf_timeline[db_version]" value="<?php echo $options['db_version']; ?>" />
-			
 			<h3>General Settings</h3>
 			<fieldset>
 				<ul>
@@ -368,7 +273,7 @@ class MF_Timeline {
 					<li>
 						<h4>Filter by the following taxonomies:</h4>
 						<p class="description clear">Leave blank to not filter by taxonomies.</p>
-						
+						<?php global $wp_taxonomies; ?>
 						<?php if ( is_array( $wp_taxonomies ) ) : ?>
 							<?php foreach ( $wp_taxonomies as $tax ) :?>
 								<?php if ( !in_array( $tax->name, array( 'nav_menu', 'link_category', 'podcast_format' ) ) ) : ?>
@@ -409,11 +314,11 @@ class MF_Timeline {
 				<ul>
 					<li>
 						<label for="mf_timeline[options][twitter][content][username]"><strong>Twitter Username:</strong></label><br/>
-						<input type="text" name="mf_timeline[options][twitter][content][username]" id="mf_timeline[options][twitter][content][username]" value="<?php echo ( !empty( $options['options']['twitter']['content']['username'] ) ) ? $options['options']['twitter']['content']['username'] : null;?>" />
+						<input type="text" name="mf_timeline[options][twitter][content][username]" id="mf_timeline[options][twitter][content][username]" value="<?php echo $options['options']['twitter']['content']['username'];?>" />
 					</li>
 					<li>
 						<label for="mf_timeline[options][twitter][filter][tags]"><strong>Filter by the following hashtags:</strong></label><br/>
-						<input type="text" name="mf_timeline[options][twitter][filter][tags]" id="mf_timeline[options][twitter][filter][tags]" value="<?php echo ( !empty( $options['options']['twitter']['filter']['tags']) ) ? $options['options']['twitter']['filter']['tags'] : null;?>" />
+						<input type="text" name="mf_timeline[options][twitter][filter][tags]" id="mf_timeline[options][twitter][filter][tags]" value="<?php echo $options['options']['twitter']['filter']['tags'];?>" />
 						<span class="description">Separate tags with commas. Leave blank to not filter by any tags.</span>
 					</li>
 				</ul>
@@ -434,9 +339,9 @@ class MF_Timeline {
 	 * @return void
 	 * @author Matt Fairbrass
 	 **/
-	public function get_plugin_stories_list_page() {
-		global $wpdb;
-		$stories = $wpdb->get_results( $wpdb->prepare("SELECT * FROM `{$this->table_mf_timeline_stories}`" ), 'ARRAY_A' );
+	public function get_plugin_stories_list_page() { 
+		settings_fields( 'mf_timeline_settings' );
+		$options = get_option( 'mf_timeline' );
 	?>
 		
 		<p>Timeline stories enable you to add content to the timeline without the need to create individual posts. You can manage all your timeline stores from this area.</p><br />
@@ -446,39 +351,38 @@ class MF_Timeline {
 			<thead>
 				<tr>
 					<th class="manage-column" scope="col" width="40">ID</th>
-					<th class="manage-column column-title" scope="col">Story Title</th>
-					<th scope="col" width="225">Author</th>
+					<th class="manage-column column-title" scope="col">Title</th>
+					<th scope="col" width="75">Author</th>
 					<th scope="col" width="125">Timeline Date</th>
 				</tr>			
 			</thead>
 			<tfoot>
 				<tr>
 					<th class="manage-column" scope="col" width="40">ID</th>
-					<th class="manage-column column-title" scope="col">Story Title</th>
-					<th scope="col column-title" width="225">Author</th>
+					<th class="manage-column column-title" scope="col">Title</th>
+					<th scope="col column-title" width="75">Author</th>
 					<th scope="col column-date" width="125">Timeline Date</th>
 				</tr>			
 			</tfoot>
 		
 			<tbody>
-				<?php foreach( $stories as $story ) :?>
+				<?php foreach( $options['stories'] as $id=>$story ) :?>
 					<tr>
 						<th scope="row">
-							<?php echo $story['story_id']; ?>
+							<?php echo $id;?>
 						</th>
 						<td class="column-title">
-							<strong><a class="row-title" href="#"><?php echo $story['story_title']; ?></a></strong>
+							<strong><a class="row-title" href="#"><?php $story['title']?></a></strong>
 							<div class="row-actions">
-								<span class="edit"><a href="?page=mf-timeline&amp;tab=stories&amp;action=editor&amp;story_id=<?php echo $story['story_id']; ?>">Edit</a> | </span>
-								<span class="edit"><a href="?page=mf-timeline&amp;tab=stories&amp;action=delete&amp;story_id=<?php echo $story['story_id']; ?>">Delete Permanently</a></span>
+								<span class="edit"><a href="?page=mf-timeline&amp;tab=stories&amp;action=editor&amp;story_id=<?php echo $id?>">Edit</a></span>
+								<span class="edit"><a href="?page=mf-timeline&amp;tab=stories&amp;action=delete&amp;story_id=<?php echo $id?>">Delete Permanently</a></span>
 							</div>
 						</td>
 						<td class="column-author">
-							<?php $user = get_userdata( $story['story_author'] );?>
-							<a href="#"><?php echo $user->display_name; ?></a>
+							<a href="#"><?php echo $story['author']?></a>
 						</td>
 						<td>
-							<?php echo date( 'm/d/Y', strtotime( $story['timeline_date'] ) );?>
+							<?php echo $story['timeline_date'];?>
 						</td>
 					</tr>
 				<?php endforeach;?>
@@ -497,155 +401,35 @@ class MF_Timeline {
 	 * @author Matt Fairbrass
 	 **/
 	public function get_plugin_stories_editor( $story_id = null ) {
-		global $wpdb;
+		settings_fields( 'mf_timeline_settings' );
+		$options = get_option( 'mf_timeline' );
 		
-		if( isset( $story_id ) && $story_id != null ) {
-			$story = $this->get_story( $story_id );
-		}
-	?>
-		<div id="poststuff" class="metabox-holder has-right-sidebar">
-			<form action="options-general.php?page=mf-timeline&amp;tab=stories" method="post">
-				<div id="side-info-column" class="inner-sidebar">
-					<div id="side-sortables" class="meta-box-sortables ui-sortable">
-						<div id="submitdiv" class="postbox ">
-							<div title="Click to toggle" class="handlediv"><br></div>
-							<h3 class="hndle">
-								<span>Timeline Publish</span>
-							</h3>
-							
-							<div class="inside">
-								<div id="submitpost" class="submitbox">
-									<div id="misc-publishing-actions">
-										<div class="misc-pub-section curtime">
-											<span id="timestamp">
-												<label for="timeline_date">Date:</label>
-											</span>
-											<input type="text" name="story[timeline_date]" id="timeline_date" value="<?php echo ( !empty( $story['timeline_date'] ) ) ? $story['timeline_date'] : date( 'Y-m-d' );?>" />
-										</div>
-										
-										<div class="misc-pub-section misc-pub-section-last">
-											<input type="checkbox" name="story[featured]" id="featured" value="1" <?php checked( '1', $story['featured'] );?> />
-											<label for="featured">Featured event?</label>
-										</div>
-									</div>
-								
-									<div id="major-publishing-actions">
-										<div id="delete-action">
-											<a href="#" class="submitdelete deletion">Delete Permanently</a>
-										</div>
-
-										<div id="publishing-action">
-												<input type="submit" accesskey="p" tabindex="5" value="Save Story" class="button-primary" id="save" name="save">
-										</div>
-										
-										<div class="clear"></div>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-				<div id="post-body">
-					<div id="post-body-content">
-						<fieldset>
-							<ul>
-								<li>
-									<div id="titlediv">
-										<input type="text" name="story[story_title]" id="title" value="<?php echo ( isset( $story['story_title'] ) ) ? $story['story_title'] : null; ?>" class="title" placeholder="Enter story title here" tabindex="1" />
-									</div>
-								</li>
-								<li>
-									<div id="postdivrich" class="postarea">
-										<?php 
-											if( !isset( $story['story_content'] ) ) {
-												$story['story_content'] = null;
-											}
-										?>
-										<?php the_editor( $story['story_content'], 'story[story_content]', 'title', true, 2 );?>
-									</div>
-								</li>
-							</ul>
-						</fieldset>
-					</div>
-				</div>
-				
-				<?php global $current_user; get_currentuserinfo(); ?>
-				<input type="hidden" name="story[story_author]" value="<?php echo ( !empty( $story['story_author'] ) ) ? $story['story_author'] : $current_user->ID;?>" />
-				<input type="hidden" name="story[story_id]" value="<?php echo ( isset( $story['story_id'] ) ) ? $story['story_id'] : null;?>" />
-			</form>
-		</div>
-	<?php	
-	}
-	
-	/**
-	 * Get Story
-	 * Returns the specified story from the database
-	 * @param int $story_id the id of the story to retrieve
-	 *
-	 * @return void
-	 * @author Matt Fairbrass
-	 **/
-	function get_story( $story_id ) {
-		global $wpdb;
-		$story = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$this->table_mf_timeline_stories} WHERE story_id = %d", $story_id ), 'ARRAY_A' );
-		
-		if(!empty($story)) {
-			return $story;
+		if( isset( $story_id ) && $story_id != null && !in_array( $options['stories'] ) ) {
+			wp_die( __( "Invalid story ID provided. The story you're looking for may have been deleted." ) );
 		}
 		else {
-			wp_die( __( 'Invalid timeline story ID. The story you are looking for does not exist in the database.' ) );
-		}
-	}
-	
-	/**
-	 * Delete Story
-	 * Deletes the specified story from the MF-Timeline database.
-	 *
-	 * @param int $story_id the id of the story to delete
-	 *
-	 * @return void
-	 * @author Matt Fairbrass
-	 **/
-	protected function delete_story( $story_id ) {
-		global $wpdb;
-		$sql = $wpdb->prepare("DELETE FROM {$this->table_mf_timeline_stories} WHERE story_id = %d", $story_id);
-		
-		if($wpdb->query($sql) !== false) {
-			add_settings_error('general', 'settings_updated', __('Timeline story successfully deleted.'), 'updated');
-		}
-	}
-	
-	/**
-	 * Get Plugin Maintenance Page
-	 * Output the options for the plugin maintenance page.
-	 *
-	 * @return void
-	 * @author Matt Fairbrass
-	 **/
-	public function get_plugin_maintenance_page() {		
-		if( isset( $_GET['action'] ) && $_GET['action'] == 'upgrade' ) {
-			$this->upgrade_db();
+			unset($story_id);
 		}
 		
-		$options = get_option( 'mf_timeline' );
+		//
 	?>
-		<p>The maintenance upgrade tool will upgrade your database to the latest version if a newer version is available. Please ensure that you have backed up the <strong>'<?php echo $this->table_mf_timeline_stories; ?>'</strong> table in your WordPress database <strong>before</strong> running the upgrade tool. I accept no responsibility for any data lost as a result of running the upgrade tool.</p>
-		
-		<ul>
-			<li><strong>Your Version:</strong> <?php echo $options['db_version'];?></li>
-			<li><strong>Latest Version:</strong> <?php echo $this->latest_db_version;?></li>
-		</ul>
-		<br/>
-		<?php if($options['db_version'] < $this->latest_db_version) : ?>
-			<p><strong style="color: #c40f0f;">Your MF-Timeline database is out of date, press the button below to run the upgrade tool.</strong></p>
-			
-			<form action="?page=mf-timeline&amp;tab=maintenance&amp;action=upgrade" method="post">
-				<p><input class="button-primary" type="submit" name="upgrade" value="Run Upgrade" id="submitbutton"></p>
-			</form>
-		<?php else: ?>
-			<p><strong style="color: #008000;">You have the latest MF-Timeline database. Nothing to upgrade :-)</strong></p>
-		<?php endif;?>
-	<?php
+		<form action="#" method="POST">
+			<fieldset>
+				<ul>
+					<li>
+						<div id="titlediv">
+							<input type="text" name="mf_timeline[stories][<?php echo $story_id?>][title]" id="title" value="<?php echo $options['stories'][$story_id]['title']?>" class="title" placeholder="Enter story title here" tabindex="1" />
+						</div>
+					</li>
+					<li>
+						<div id="postdivrich" class="postarea">
+							<?php the_editor( $options['stories'][$story_id]['content'], 'mf_timeline[stories]['.$story_id.'][content]', 'title', true, 2 );?>
+						</div>
+					</li>
+				</ul>
+			</fieldset>
+		</form>
+	<?php	
 	}
 	
 	/**
@@ -672,7 +456,7 @@ class MF_Timeline {
 				$post_types_escape[] = '%s';
 			}
 			
-			$sql = "SELECT {$wpdb->posts}.ID AS id, {$wpdb->posts}.post_title AS title, {$wpdb->posts}.post_content AS content, {$wpdb->posts}.post_excerpt AS excerpt, {$wpdb->posts}.post_date AS date, {$wpdb->posts}.post_author AS author, {$wpdb->terms}.term_id AS term_id
+			$sql = "SELECT {$wpdb->posts}.ID, {$wpdb->posts}.post_title, {$wpdb->posts}.post_content, {$wpdb->posts}.post_excerpt, {$wpdb->posts}.post_date, {$wpdb->posts}.post_author, {$wpdb->terms}.term_id 
 				FROM `{$wpdb->posts}` 
 				INNER JOIN {$wpdb->term_relationships} ON ({$wpdb->posts}.ID = {$wpdb->term_relationships}.object_id) 
 				INNER JOIN {$wpdb->term_taxonomy} ON ({$wpdb->term_relationships}.term_taxonomy_id = $wpdb->term_taxonomy.term_taxonomy_id)
@@ -714,15 +498,12 @@ class MF_Timeline {
 			$results = $wpdb->get_results( $query, 'ARRAY_A' );
 			
 			foreach($results as $post) {
-				$year = date( 'Y', strtotime( $post['date'] ) );
+				$year = date( 'Y', strtotime( $post['post_date'] ) );
 				$post['source'] = 'wp';
 				$posts[$year][] = $post;
 			}
 		
 			return $posts;
-		}
-		else {
-			return null;
 		}
 	}
 	
@@ -766,10 +547,10 @@ class MF_Timeline {
 				foreach( $json->results as $result ) {
 					$year = date( 'Y', strtotime( $result->created_at ) );
 					
-					$row['content'] = (string) $result->text;
-					$row['date'] = (string) $result->created_at;
-					$row['author'] = (string) $result->from_user;
-					$row['author_image'] = (string) $result->profile_image_url;
+					$row['post_content'] = (string) $result->text;
+					$row['post_date'] = (string) $result->created_at;
+					$row['post_author'] = (string) $result->from_user;
+					$row['profile_image'] = (string) $result->profile_image_url;
 					$row['source'] = 'twitter';
 					
 					$tweets[$year][] = $row;
@@ -777,36 +558,6 @@ class MF_Timeline {
 			}
 			
 			return $tweets;
-		}
-		else {
-			return null;
-		}
-	}
-	
-	/**
-	 * Get Content Stories
-	 * Returns an array of timeline stories organised by year
-	 *
-	 * @return void
-	 * @author Matt Fairbrass
-	 **/
-	function get_content_stories() {
-		global $wpdb;
-		
-		$sql = "SELECT story_id AS id, story_title AS title, story_content AS content, timeline_date AS date, featured FROM {$this->table_mf_timeline_stories}";
-		$results = $wpdb->get_results( $sql, 'ARRAY_A' );
-		
-		if( !empty( $results ) ) {
-			foreach( $results as $story ) {
-				$year = date( 'Y', strtotime( $story['date'] ) );
-				$story['source'] = 'timeline_stories';
-				$stories[$year][] = $story;
-			}
-			
-			return $stories;
-		}
-		else {
-			return null;
 		}
 	}
 	
@@ -821,24 +572,27 @@ class MF_Timeline {
 	 * @author Matt Fairbrass
 	 **/
 	public function get_timeline_events() {
-		$contents[] = $this->get_content_posts();
-		$contents[] = $this->get_content_tweets();
-		$contents[] = $this->get_content_stories();
+		$posts = $this->get_content_posts();
+		$tweets = $this->get_content_tweets();
 		
 		$events = array();
 		
-		// Process each of the contents we have attempted to grab and combine them as events by year.
-		foreach( $contents as $content ) {
-			if( is_array ( $content ) ) {
-				foreach ( $content as $year => $values ) {
-					if( empty( $events[$year] ) || !isset( $events[$year] ) ) {
-						$events[$year] = $values;
-					}
-					else {
-						$events[$year] = array_merge( $events[$year], $values);
-					}
-				}
+		// Create an array of years based on the years avaialble from the content sources
+		$years = array_unique( array_merge( (array) array_keys( $tweets ), (array) array_keys( $posts ) ) );		
+		
+		if( !empty( $posts ) && !empty( $tweets ) ) {
+			foreach( $years as $year ) {
+			    $events[$year] = array_merge( (array) $posts[$year], (array) $tweets[$year] );
 			}
+		}
+		else if( !empty( $posts ) ) {
+			$events = $posts;
+		}
+		else if( !empty( $tweets ) ) {
+			$events = $tweets;
+		}
+		else {
+			return null;
 		}
 		
 		foreach( $events as $year=>&$event ) {
@@ -858,7 +612,7 @@ class MF_Timeline {
 	 * @author Matt Fairbrass
 	 **/
 	public function sort_events_by_date( $elem1, $elem2 ) {
-		return strtotime( $elem2['date'] ) - strtotime( $elem1['date'] );
+		return strtotime( $elem2['post_date'] ) - strtotime( $elem1['post_date'] );
 	}
 	
 	/**
@@ -870,7 +624,7 @@ class MF_Timeline {
 	 **/
 	public function get_timeline() {
 		$events = $this->get_timeline_events();
-		$class = null;
+		
 		$html = '<div class="timeline">';
 			$html .= '<a href="#" class="timeline_spine"></a>';
 			
@@ -882,76 +636,48 @@ class MF_Timeline {
 					
 					$html .= '<ol class="events">';
 						foreach( $timeline_events as $event ) {
-							switch( $event['source'] ) {
-								case 'wp' :
-									if( get_post_meta( $event['id'], 'mf_timeline_featured', true ) ) {
-										$excerpt_length = 700;
-										$class = ' featured';
-									}
-									else {
-										$excerpt_length = 300;
-										$class = null;
-									}
-								
-									$html .= '<li class="event ' . $event['source'] . $class . '">';
-										$html .= '<div class="event_pointer"></div>';
-										$html .= '<div class="event_container">';
-											$html .= '<div class="event_title">';
-												$html .= '<h3><a href="' . get_permalink( $event['id'] ) . '">' . $event['title'] . '</a></h3>';
-									
-												$html .= '<span class="subtitle">';
-													$html .= $this->format_date( $event['date'] );
-												$html .= '</span>';
-											$html .= '</div>';
-								
-											$html .= '<div class="event_content">';
-												$html .= apply_filters( 'the_content', $this->format_excerpt( $event['content'], $excerpt_length, $event['excerpt'] ) );
-											$html .= '</div>';
-										$html .= '</div>';
-									$html .= '</li>';
-								break;
-								
-								case 'twitter' :
-									$html .= '<li class="event ' . $event['source'] . '">';
-										$html .= '<div class="event_pointer"></div>';
-										$html .= '<div class="event_container">';
-											$html .= '<div class="event_title">';
-												$html .= '<img src="' . $event['author_image'] . '" alt="' . $event['author'] . '" width="50" height="50" class="profile_image" />';
-												$html .= '<h3><a href="http://www.twitter.com/' . $event['author'] . '/">@' . $event['author'] . '</a></h3>';
-										
-												$html .= '<span class="subtitle">';
-													$html .= $this->format_date( $event['date'] );
-												$html .= '</span>';
-											$html .= '</div>';
-									
-											$html .= '<div class="event_content">';
-												$html .= apply_filters( 'the_content', $this->format_text( $event['content'] ) );
-											$html .= '</div>';
-										$html .= '</div>';
-									$html .= '</li>';
-								break;
-								
-								case 'timeline_stories' :
-									$class = ( $event['featured'] == 1 ) ? ' featured' : null;
-									
-									$html .= '<li class="event ' . $event['source'] . $class . '">';
-										$html .= '<div class="event_pointer"></div>';
-										$html .= '<div class="event_container">';
-											$html .= '<div class="event_title">';
-												$html .= '<h3>' . $event['title'] . '</h3>';
-										
-												$html .= '<span class="subtitle">';
-													$html .= $this->format_date( $event['date'] );
-												$html .= '</span>';
-											$html .= '</div>';
-									
-											$html .= '<div class="event_content">';
-												$html .= apply_filters( 'the_content', $this->format_text( $event['content'] ) );
-											$html .= '</div>';
-										$html .= '</div>';
-									$html .= '</li>';
-								break;
+							$is_featured = get_post_meta( $event['ID'], 'mf_timeline_featured', true );
+							
+							if( $is_featured == true ) {
+								$excerpt_length = 700;
+								$class = ' featured';
 							}
+							else {
+								$excerpt_length = 300;
+								$class = null;
+							}
+							
+							$html .= '<li class="event ' . $event['source'] . $class . '">';
+								$html .= '<div class="event_pointer"></div>';
+								
+								$html .= '<div class="event_container">';
+									$html .= '<div class="event_title">';
+										switch( $event['source'] ) {
+											case 'wp' :
+												$html .= '<h3><a href="' . get_permalink( $event['ID'] ) . '">' . $event['post_title'] . '</a></h3>';
+											break;
+
+											case 'twitter' :
+												$html .= '<img src="' . $event['profile_image'] . '" alt="' . $event['post_author'] . '" width="50" height="50" class="profile_image" />';
+												$html .= '<h3><a href="http://www.twitter.com/' . $event['post_author'] . '/">@' . $event['post_author'] . '</a></h3>';
+											break;
+										}
+										
+										$html .= '<span class="subtitle">';
+											$html .= $this->format_date( $event['post_date'] );
+										$html .= '</span>';
+									$html .= '</div>';
+									
+									$html .= '<div class="event_content">';
+										if($event['source'] == 'wp') {
+											$html .= apply_filters( 'the_content', $this->format_excerpt( $event['post_content'], $excerpt_length, $event['post_excerpt'] ) );
+										}
+										else {
+											$html .= apply_filters( 'the_content', $this->format_text( $event['post_content'] ) );
+										}
+									$html .= '</div>';
+								$html .= '</div>';
+							$html .= '</li>';
 						}
 					$html .= '</ol>';
 					
@@ -973,7 +699,7 @@ class MF_Timeline {
 	 * @return void
 	 * @author Matt Fairbrass
 	 **/
-	public function get_timeline_nav( $years ) {
+	public function get_timeline_nav($years) {
 		$options = get_option( 'mf_timeline' );
 		
 		if( $options['options']['timeline_nav'] == 1 ) {
@@ -1075,7 +801,7 @@ class MF_Timeline {
 		
 		$text = $this->format_text( $text );
 		
-	    return apply_filters( 'wp_trim_excerpt', $text );
+	    return apply_filters( 'wp_trim_excerpt', $text, $raw_excerpt );
 	}
 	
 	
@@ -1092,8 +818,8 @@ class MF_Timeline {
 	 * @author Matt Fairbrass
 	 **/
 	public function format_text( $text ) {
-		$text = $this->format_text_to_links( $text );
-		$text = $this->format_text_to_twitter( $text );
+		$text = $this->format_text_to_links($text);
+		$text = $this->format_text_to_twitter($text);
 		
 		return $text;
 	}
@@ -1108,7 +834,7 @@ class MF_Timeline {
 	 * @author Matt Fairbrass
 	 **/
 	public function format_text_to_links( $text ) {
-		if( empty( $text ) ) {
+		if(empty($text)) {
 			return null;
 		}
 		
@@ -1137,93 +863,6 @@ class MF_Timeline {
 		$text = preg_replace( "/([^&]|^)\#([a-z0-9_\-]+)/", ' <a href="http://search.twitter.com/search?q=$2" target="_blank">&#35;$2</a>', $text );
 		
 		return $text;
-	}
-	
-	/**
-	 * Check DB Upgrade
-	 * Checks the user's current MF-Timeline DB version against a specified db versipn to determine if an upgrade is available.
-	 * 
-	 * @param $db_version int the current version of the DB.
-	 *
-	 * @return void
-	 * @author Matt Fairbrass
-	 **/
-	protected function check_db_upgrade( $db_version ) {
-		$options = get_option( 'mf_timeline' );
-
-		if( !isset( $options['db_version'] ) || empty( $options['db_version'] ) ) {
-			$this->install_db();
-		}
-		else if( $options['db_version'] < $db_version ) {
-			$this->errors->add( 'db_upgrade', __('An upgrade is available for the MF-Timeline database. We recommend that you run the <a href="?page=mf-timeline&amp;tab=maintenance">maintenance upgrade tool</a> immediately to avoid any problems.' ) );
-		}
-	}
-	
-	/**
-	 * Install DB
-	 * Installs the mf_timeline_stories DB and then upgrades it to the latest version.
-	 *
-	 * @return void
-	 * @author Matt Fairbrass
-	 **/
-	static function install_db() {
-		global $wpdb;
-		$options = get_option( 'mf_timeline' );
-		$table = $wpdb->prefix . 'mf_timeline_stories';
-		
-		$sql = "CREATE TABLE IF NOT EXISTS `{$table}` (
-			`story_id` mediumint(9) NOT NULL AUTO_INCREMENT,
-			`story_title` text NOT NULL,
-			`story_content` text,
-			`timeline_date` date NOT NULL DEFAULT '0000-00-00',
-			`featured` int(1) NOT NULL DEFAULT '0',
-			`story_modified` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
-			PRIMARY KEY  (`story_id`),
-			KEY `timeline_date` (`timeline_date`,`story_modified`)
-		) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;";
-		
-		require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
-		dbDelta( $sql );
-		
-		// Update the user's db version to version 1 and run the upgrade script.
-		if( !isset( $options['db_version'] ) || empty( $options['db_version'] ) ) {
-			$options['db_version'] = 1;
-			update_option( 'mf_timeline', $options );
-
-			$this->upgrade_db();
-		}
-	}
-	
-	/**
-	 * Upgrade DB
-	 * Upgrades the mf_timeline_stories DB.
-	 *
-	 * @return void
-	 * @author Matt Fairbrass
-	 **/
-	protected function upgrade_db() {
-		global $wpdb;
-		$options = get_option( 'mf_timeline' );
-
-		if( $options['db_version'] < $this->latest_db_version ) {
-			switch( true ) {
-				/**
-				 * Version: 2
-				 * Purpose: Added author column to the stories table.
-				 * @author Matt Fairbrass
-				 */
-				case ($options['db_version'] < 2) :
-					$sql = "ALTER TABLE {$this->table_mf_timeline_stories} ADD `story_author` BIGINT( 20 ) UNSIGNED NOT NULL DEFAULT '0',
-					ADD INDEX (  `story_author` )";
-					
-					if( $wpdb->query($sql) !== false ) {
-						$options['db_version'] = 2;
-					}
-			}
-			
-			unset( $this->errors->errors['db_upgrade'] ); // Remove the error about upgrading db.
-			update_option( 'mf_timeline', $options );
-		}
 	}
 }
 ?>

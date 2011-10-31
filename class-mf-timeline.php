@@ -59,7 +59,7 @@ class MF_Timeline {
 		
 		// Hack: For some reason I can't seem to hook the parse_request action, so resorting to this:
 		if( isset( $_POST['story'] ) ) {
-			$this->validate_timeline_stories();
+			$this->validate_timeline_stories( $_POST['story'] );
 		}
 	}
 	
@@ -158,7 +158,7 @@ class MF_Timeline {
 		if( !empty( $input['options']['wp']['content'] ) || !empty( $input['options']['wp']['filter'] ) ) {
 			// Content
 			foreach( $input['options']['wp']['content'] as $key=>$value ) {
-				$valid_input['options']['wp']['content'][$key] = ( $value == 1 ? 1 : 0 );
+				$valid_input['options']['wp']['content'][$key] = (int) ( $value == 1 ? 1 : 0 );
 			}
 			
 			// Filters
@@ -166,7 +166,7 @@ class MF_Timeline {
 				foreach( $value as $id=>$val ) {
 					switch( $filter ) {
 						case 'taxonomy' :
-							$valid_input['options']['wp']['filter']['taxonomy'][$id] = ( $val == 1 ? 1 : 0 );
+							$valid_input['options']['wp']['filter']['taxonomy'][$id] = (int) ( $val == 1 ? 1 : 0 );
 						break;
 					
 						default :
@@ -231,8 +231,31 @@ class MF_Timeline {
 	 * @return void
 	 * @author Matt Fairbrass
 	 **/
-	public function validate_timeline_stories() {
+	public function validate_timeline_stories( $input ) {
+		global $wpdb;
+		$valid_input = array();
 		
+		$valid_input['story_title'] = wp_kses_post( $input['story_title'] );
+		$valid_input['story_content'] = wp_kses_post( (string) $input['story_content'] );
+		$valid_input['timeline_date'] = date( 'Y-m-d', strtotime( esc_html( $input['timeline_date'] ) ) );
+		$valid_input['featured'] = (int) ( $input['featured'] == 1 ? 1 : 0 );
+		$valid_input['story_modified'] = date( 'Y-m-d H:i:s' );
+		$valid_input['story_author'] = (int) $input['story_author'];
+		
+		if( $input['story_id'] == null ) {
+			$result = $wpdb->insert( $this->table_mf_timeline_stories, $valid_input, array( '%s','%s','%s','%d','%s','%d' ) );
+		}
+		else {
+			$story_id = (int) $input['story_id'];
+			$result = $wpdb->update( $this->table_mf_timeline_stories, $valid_input, array( 'story_id' => $story_id ), array( '%s','%s','%s','%d','%s','%d' ), '%d' );
+		}
+		
+		if($result === false) {
+			$this->errors->add( 'timeline_story', __( 'An error occurred whilst attempting to save timeline story to the database.' ) );
+		}
+		else {
+			add_settings_error('general', 'settings_updated', __('Timeline story saved.'), 'updated');
+		}
 	}
 	
 	/**
@@ -317,11 +340,14 @@ class MF_Timeline {
 	 **/
 	public function get_plugin_settings_page() { ?>
 		<p>Configure the default MF-Timeline settings below. You can override these settings when calling the shortcode in your posts or the function in your templates.</p>
+	
 		<form action="options.php" method="POST">
 			<?php 
 				settings_fields( 'mf_timeline_settings' );
 				$options = get_option( 'mf_timeline' );
 			?>
+			<input type="hidden" name="mf_timeline[db_version]" value="<?php echo $options['db_version']; ?>" />
+			
 			<h3>General Settings</h3>
 			<fieldset>
 				<ul>
@@ -427,7 +453,7 @@ class MF_Timeline {
 				<tr>
 					<th class="manage-column" scope="col" width="40">ID</th>
 					<th class="manage-column column-title" scope="col">Story Title</th>
-					<th scope="col" width="75">Author</th>
+					<th scope="col" width="225">Author</th>
 					<th scope="col" width="125">Timeline Date</th>
 				</tr>			
 			</thead>
@@ -435,7 +461,7 @@ class MF_Timeline {
 				<tr>
 					<th class="manage-column" scope="col" width="40">ID</th>
 					<th class="manage-column column-title" scope="col">Story Title</th>
-					<th scope="col column-title" width="75">Author</th>
+					<th scope="col column-title" width="225">Author</th>
 					<th scope="col column-date" width="125">Timeline Date</th>
 				</tr>			
 			</tfoot>
@@ -454,7 +480,8 @@ class MF_Timeline {
 							</div>
 						</td>
 						<td class="column-author">
-							<a href="#"><?php echo $story['story_author']; ?></a>
+							<?php $user = get_userdata( $story['story_author'] );?>
+							<a href="#"><?php echo $user->display_name; ?></a>
 						</td>
 						<td>
 							<?php echo date( 'm/d/Y', strtotime( $story['timeline_date'] ) );?>
@@ -479,7 +506,7 @@ class MF_Timeline {
 		global $wpdb;
 		
 		if( isset( $story_id ) && $story_id != null ) {
-			$story = get_row( $wpdb->prepare( "SELECT * FROM {$this->table_mf_timeline_stories} WHERE story_id = %d", $story_id ), 'ARRAY_A' );
+			$story = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$this->table_mf_timeline_stories} WHERE story_id = %d", $story_id ), 'ARRAY_A' );
 			
 			if( empty( $story ) ) {
 				wp_die( __( 'Invalid timeline story ID. The story you are looking for does not exist in the database.' ) );
@@ -503,7 +530,7 @@ class MF_Timeline {
 											<span id="timestamp">
 												<label for="timeline_date">Date:</label>
 											</span>
-											<input type="text" name="story[timeline_date]" id="timeline_date" value="<?php echo ( !empty( $story['timeline_date'] ) ) ? $story['timeline_date'] : date( 'd/m/Y', time() );?>" />
+											<input type="text" name="story[timeline_date]" id="timeline_date" value="<?php echo ( !empty( $story['timeline_date'] ) ) ? $story['timeline_date'] : date( 'Y-m-d' );?>" />
 										</div>
 										
 										<div class="misc-pub-section misc-pub-section-last">
@@ -546,6 +573,10 @@ class MF_Timeline {
 						</fieldset>
 					</div>
 				</div>
+				
+				<?php global $current_user; get_currentuserinfo(); ?>
+				<input type="hidden" name="story[story_author]" value="<?php echo ( !empty( $story['story_author'] ) ) ? $story['story_author'] : $current_user->ID;?>" />
+				<input type="hidden" name="story[story_id]" value="<?php echo $story['story_id'];?>" />
 			</form>
 		</div>
 	<?php	
@@ -1044,8 +1075,9 @@ class MF_Timeline {
 	 * @return void
 	 * @author Matt Fairbrass
 	 **/
-	static function install_db() {
+	public function install_db() {
 		global $wpdb;
+		$options = get_option( 'mf_timeline' );
 		
 		$sql = "CREATE TABLE IF NOT EXISTS `{$this->table_mf_timeline_stories}` (
 			`story_id` mediumint(9) NOT NULL AUTO_INCREMENT,
@@ -1063,10 +1095,9 @@ class MF_Timeline {
 		
 		// Update the user's db version to version 1 and run the upgrade script.
 		if( !isset( $options['db_version'] ) || empty( $options['db_version'] ) ) {
-			$options = get_option( 'mf_timeline' );
 			$options['db_version'] = 1;
 			update_option( 'mf_timeline', $options );
-			
+
 			$this->upgrade_db();
 		}
 	}
@@ -1081,7 +1112,7 @@ class MF_Timeline {
 	protected function upgrade_db() {
 		global $wpdb;
 		$options = get_option( 'mf_timeline' );
-		
+
 		if( $options['db_version'] < $this->latest_db_version ) {
 			switch( true ) {
 				/**
@@ -1100,8 +1131,6 @@ class MF_Timeline {
 			
 			unset( $this->errors->errors['db_upgrade'] ); // Remove the error about upgrading db.
 			update_option( 'mf_timeline', $options );
-			
-			header( 'Location:' . $_SERVER['REQUEST_URI'] );
 		}
 	}
 }

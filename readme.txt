@@ -14,7 +14,7 @@ Creates a visual linear timeline representation from your Wordpress posts and ot
 
 In addition to Wordpress content, you can also add content to the timeline from Twitter - filtering by multiple hashtags.
 
-Please report all issues or give feedback on the plugin's [Github repository](http://wordpress.org/ "MF Timeline Repository").
+Please report all issues or give feedback on the plugin's [Github repository](https://github.com/matt-d-rat/MF-Timeline "MF Timeline Repository").
 
 == Installation ==
 
@@ -34,7 +34,7 @@ By default the plugin is designed to look like Facebook's Profile Timeline - sin
 
 = Where can I report an issue or give feedback on the plugin? =
 
-Please direct all issues and feedback to the plugin's [Github repository](http://wordpress.org/ "MF Timeline Repository") page which can be found here:
+Please direct all issues and feedback to the plugin's [Github repository](https://github.com/matt-d-rat/MF-Timeline "MF Timeline Repository") page which can be found here:
 
 = Do you plan to add any other content sources to the plugin? =
 

@@ -1,5 +1,7 @@
 $(document).ready(function(){
-	$('.timeline .timeline_nav').stickyfloat({duration: 500});
+	if($('.timeline .timeline_nav')) {
+		$('.timeline .timeline_nav').stickyfloat({duration: 500});
+	}
 	
 	$('.timeline .section').each(function(){
 		$(this).afterScroll(function(){

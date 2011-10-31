@@ -4,7 +4,7 @@ Donate link: http://www.aplaceformyhead.co.uk
 Tags: timeline, facebook, twitter, time line, event, stories, story, milestone
 Requires at least: 3.1.3
 Tested up to: 3.2.1
-Stable tag: 1.0.2
+Stable tag: 1.0.3
 
 Creates a visual linear timeline representation from your Wordpress posts and other media sources in the style of Facebook Profile Timeline.
 
@@ -60,10 +60,14 @@ If you have any other ideas for sources I can make available to the timeline the
 
 == Upgrade Notice ==
 
-= 1.0.2 =
+= 1.0.3 =
 A new version of MF-Timeline is available. Upgrade to the latest version.
 
 == Changelog ==
+
+= 1.0.3 =
+* Fixed JS error caused by jQuery.stickyfloat plugin when scripts are enqueued.
+* Added enqueue call for jQuery library rather than relying on the user to enqueue jQuery through their theme.
 
 = 1.0.2 =
 * Corrected git svn version out of date issue.

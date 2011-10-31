@@ -1169,8 +1169,9 @@ class MF_Timeline {
 	static function install_db() {
 		global $wpdb;
 		$options = get_option( 'mf_timeline' );
+		$table = $wpdb->prefix . 'mf_timeline_stories';
 		
-		$sql = "CREATE TABLE IF NOT EXISTS `{$this->table_mf_timeline_stories}` (
+		$sql = "CREATE TABLE IF NOT EXISTS `{$table}` (
 			`story_id` mediumint(9) NOT NULL AUTO_INCREMENT,
 			`story_title` text NOT NULL,
 			`story_content` text,

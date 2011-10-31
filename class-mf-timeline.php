@@ -660,7 +660,7 @@ class MF_Timeline {
 				$post_types_escape[] = '%s';
 			}
 			
-			$sql = "SELECT {$wpdb->posts}.ID, {$wpdb->posts}.post_title, {$wpdb->posts}.post_content, {$wpdb->posts}.post_excerpt, {$wpdb->posts}.post_date, {$wpdb->posts}.post_author, {$wpdb->terms}.term_id 
+			$sql = "SELECT {$wpdb->posts}.ID AS id, {$wpdb->posts}.post_title AS title, {$wpdb->posts}.post_content AS content, {$wpdb->posts}.post_excerpt AS excerpt, {$wpdb->posts}.post_date AS date, {$wpdb->posts}.post_author AS author, {$wpdb->terms}.term_id AS term_id
 				FROM `{$wpdb->posts}` 
 				INNER JOIN {$wpdb->term_relationships} ON ({$wpdb->posts}.ID = {$wpdb->term_relationships}.object_id) 
 				INNER JOIN {$wpdb->term_taxonomy} ON ({$wpdb->term_relationships}.term_taxonomy_id = $wpdb->term_taxonomy.term_taxonomy_id)
@@ -702,7 +702,7 @@ class MF_Timeline {
 			$results = $wpdb->get_results( $query, 'ARRAY_A' );
 			
 			foreach($results as $post) {
-				$year = date( 'Y', strtotime( $post['post_date'] ) );
+				$year = date( 'Y', strtotime( $post['date'] ) );
 				$post['source'] = 'wp';
 				$posts[$year][] = $post;
 			}
@@ -751,10 +751,10 @@ class MF_Timeline {
 				foreach( $json->results as $result ) {
 					$year = date( 'Y', strtotime( $result->created_at ) );
 					
-					$row['post_content'] = (string) $result->text;
-					$row['post_date'] = (string) $result->created_at;
-					$row['post_author'] = (string) $result->from_user;
-					$row['profile_image'] = (string) $result->profile_image_url;
+					$row['content'] = (string) $result->text;
+					$row['date'] = (string) $result->created_at;
+					$row['author'] = (string) $result->from_user;
+					$row['author_image'] = (string) $result->profile_image_url;
 					$row['source'] = 'twitter';
 					
 					$tweets[$year][] = $row;
@@ -816,7 +816,7 @@ class MF_Timeline {
 	 * @author Matt Fairbrass
 	 **/
 	public function sort_events_by_date( $elem1, $elem2 ) {
-		return strtotime( $elem2['post_date'] ) - strtotime( $elem1['post_date'] );
+		return strtotime( $elem2['date'] ) - strtotime( $elem1['date'] );
 	}
 	
 	/**
@@ -840,7 +840,7 @@ class MF_Timeline {
 					
 					$html .= '<ol class="events">';
 						foreach( $timeline_events as $event ) {
-							$is_featured = get_post_meta( $event['ID'], 'mf_timeline_featured', true );
+							$is_featured = get_post_meta( $event['id'], 'mf_timeline_featured', true );
 							
 							if( $is_featured == true ) {
 								$excerpt_length = 700;
@@ -858,26 +858,26 @@ class MF_Timeline {
 									$html .= '<div class="event_title">';
 										switch( $event['source'] ) {
 											case 'wp' :
-												$html .= '<h3><a href="' . get_permalink( $event['ID'] ) . '">' . $event['post_title'] . '</a></h3>';
+												$html .= '<h3><a href="' . get_permalink( $event['id'] ) . '">' . $event['title'] . '</a></h3>';
 											break;
 
 											case 'twitter' :
-												$html .= '<img src="' . $event['profile_image'] . '" alt="' . $event['post_author'] . '" width="50" height="50" class="profile_image" />';
-												$html .= '<h3><a href="http://www.twitter.com/' . $event['post_author'] . '/">@' . $event['post_author'] . '</a></h3>';
+												$html .= '<img src="' . $event['author_image'] . '" alt="' . $event['author'] . '" width="50" height="50" class="profile_image" />';
+												$html .= '<h3><a href="http://www.twitter.com/' . $event['author'] . '/">@' . $event['author'] . '</a></h3>';
 											break;
 										}
 										
 										$html .= '<span class="subtitle">';
-											$html .= $this->format_date( $event['post_date'] );
+											$html .= $this->format_date( $event['date'] );
 										$html .= '</span>';
 									$html .= '</div>';
 									
 									$html .= '<div class="event_content">';
 										if($event['source'] == 'wp') {
-											$html .= apply_filters( 'the_content', $this->format_excerpt( $event['post_content'], $excerpt_length, $event['post_excerpt'] ) );
+											$html .= apply_filters( 'the_content', $this->format_excerpt( $event['content'], $excerpt_length, $event['excerpt'] ) );
 										}
 										else {
-											$html .= apply_filters( 'the_content', $this->format_text( $event['post_content'] ) );
+											$html .= apply_filters( 'the_content', $this->format_text( $event['content'] ) );
 										}
 									$html .= '</div>';
 								$html .= '</div>';

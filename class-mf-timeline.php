@@ -28,10 +28,18 @@ class MF_Timeline {
 	 **/
 	public function mf_timeline_admin_init() {
 		register_setting( 'mf_timeline_settings', 'mf_timeline', array( &$this, 'validate_settings' ) );
+		
+		wp_register_script( 'jquery-ui', ("https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"), false, '1.8.16' );
+		wp_register_script( 'mf_timeline_admin_js', plugins_url( 'scripts/js/jquery.mf_timeline_admin.min.js', __FILE__ ), true );
 		wp_register_style( 'mf_timeline_admin_styles', plugins_url( 'styles/admin.min.css', __FILE__ ) );
-		wp_enqueue_style( 'mf_timeline_admin_styles' );
+		wp_register_style( 'jquery-ui', plugins_url( 'styles/jquery-ui-1.8.16.mf_timeline.min.css', __FILE__ ) );
+		 
+		
 		wp_enqueue_script( array( 'jquery', 'editor', 'thickbox', 'media-upload' ) );
-		wp_enqueue_style( 'thickbox' );
+		wp_enqueue_script( 'jquery-ui' );
+		wp_enqueue_style( 'jquery-ui' );
+		wp_enqueue_script( 'mf_timeline_admin_js' );
+		wp_enqueue_style( 'mf_timeline_admin_styles' );
 	}
 	
 	/**
@@ -410,25 +418,68 @@ class MF_Timeline {
 		else {
 			unset($story_id);
 		}
-		
-		//
 	?>
-		<form action="#" method="POST">
-			<fieldset>
-				<ul>
-					<li>
-						<div id="titlediv">
-							<input type="text" name="mf_timeline[stories][<?php echo $story_id?>][title]" id="title" value="<?php echo $options['stories'][$story_id]['title']?>" class="title" placeholder="Enter story title here" tabindex="1" />
+		<div id="poststuff" class="metabox-holder has-right-sidebar">
+			<form action="#" method="POST">
+				<div id="side-info-column" class="inner-sidebar">
+					<div id="side-sortables" class="meta-box-sortables ui-sortable">
+						<div id="submitdiv" class="postbox ">
+							<div title="Click to toggle" class="handlediv"><br></div>
+							<h3 class="hndle">
+								<span>Timeline Publish</span>
+							</h3>
+							
+							<div class="inside">
+								<div id="submitpost" class="submitbox">
+									<div id="misc-publishing-actions">
+										<div class="misc-pub-section curtime">
+											<span id="timestamp">
+												<label for="timeline_date">Date:</label>
+											</span>
+											<input type="text" name="mf_timeline[stories][<?php echo $story_id;?>][timeline_date]" id="timeline_date" value="<?php echo (!empty($options['stories'][$story_id]['timeline_date'])) ? $options['stories'][$story_id]['timeline_date'] : date('d/m/Y', time());?>" />
+										</div>
+										
+										<div class="misc-pub-section misc-pub-section-last">
+											<input type="checkbox" name="featured" id="mf_timeline[stories][<?php echo $story_id;?>][featured]" value="1" <?php checked('1', $options['stories'][$story_id]['featured']);?> />
+											<label for="featured">Featured event?</label>
+										</div>
+									</div>
+								
+									<div id="major-publishing-actions">
+										<div id="delete-action">
+											<a href="#" class="submitdelete deletion">Delete Permanently</a>
+										</div>
+
+										<div id="publishing-action">
+												<input type="submit" accesskey="p" tabindex="5" value="Save Story" class="button-primary" id="save" name="save"></div>
+											<div class="clear">
+										</div>
+									</div>
+								</div>
+							</div>
 						</div>
-					</li>
-					<li>
-						<div id="postdivrich" class="postarea">
-							<?php the_editor( $options['stories'][$story_id]['content'], 'mf_timeline[stories]['.$story_id.'][content]', 'title', true, 2 );?>
-						</div>
-					</li>
-				</ul>
-			</fieldset>
-		</form>
+					</div>
+				</div>
+				<div id="post-body">
+					<div id="post-body-content">
+						<fieldset>
+							<ul>
+								<li>
+									<div id="titlediv">
+										<input type="text" name="mf_timeline[stories][<?php echo $story_id?>][title]" id="title" value="<?php echo $options['stories'][$story_id]['title']?>" class="title" placeholder="Enter story title here" tabindex="1" />
+									</div>
+								</li>
+								<li>
+									<div id="postdivrich" class="postarea">
+										<?php the_editor( $options['stories'][$story_id]['content'], 'mf_timeline[stories]['.$story_id.'][content]', 'title', true, 2 );?>
+									</div>
+								</li>
+							</ul>
+						</fieldset>
+					</div>
+				</div>
+			</form>
+		</div>
 	<?php	
 	}
 	

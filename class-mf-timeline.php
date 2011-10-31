@@ -1,11 +1,22 @@
 <?php
+/*
+Plugin Name: WP Facebook Timeline (MF-Timeline)
+Plugin URI: http://www.aplaceformyhead.co.uk/2011/10/05/wp-facebook-timeline-mf-timeline/
+Description: Creates a visual linear timeline representation from your Wordpress posts and other media sources in the style of Facebook Profile Timeline.
+Version: 1.1.3
+Author: Matt Fairbrass
+Author URI: http://www.aplaceformyhead.co.uk
+License: GPLv2
+.
+By default the timeline is styled to resemble Facebook's Profile Timeline, but you are free to override the enqueued plugin styles with your own.
+.
+*/
 class MF_Timeline {
 	public $years = array();
 	public $pluginPath;
 	public $pluginUrl;
 	public $errors;
 	protected $table_mf_timeline_stories;
-	protected $latest_db_version; // The latest database version
 	
 	public function __construct() {
 		global $wpdb;
@@ -15,7 +26,6 @@ class MF_Timeline {
 		$this->errors = new WP_Error();
 		
 		$this->table_mf_timeline_stories = $wpdb->prefix . 'mf_timeline_stories';
-		$this->latest_db_version = 2; // Set the latest database version available.
 		
 		// Action Hooks
 		add_action( 'admin_menu', array( &$this, 'admin_menu' ) );
@@ -23,8 +33,6 @@ class MF_Timeline {
 		add_action( 'wp_print_styles', array( &$this, 'mf_timeline_styles' ) );
 		add_action( 'init', array( &$this, 'mf_timeline_js' ) );
 		add_action( 'admin_head', array( &$this, 'load_tiny_mce' ) );
-		
-		register_activation_hook( __FILE__, array( &$this, 'install_db' ) );
 		
 		// Shortcode
 		add_shortcode( 'mf_timeline', array( &$this, 'shortcode' ) );
@@ -38,6 +46,7 @@ class MF_Timeline {
 	 * @author Matt Fairbrass
 	 **/
 	public function mf_timeline_admin_init() {
+		global $mf_timeline_db_version;
 		register_setting( 'mf_timeline_settings', 'mf_timeline', array( &$this, 'validate_settings' ) );
 		
 		wp_register_script( 'jquery-ui', ("https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"), false, '1.8.16' );
@@ -51,7 +60,7 @@ class MF_Timeline {
 		wp_enqueue_script( 'mf_timeline_admin_js' );
 		wp_enqueue_style( 'mf_timeline_admin_styles' );
 		
-		$this->check_db_upgrade($this->latest_db_version);
+		$this->check_db_upgrade( $mf_timeline_db_version );
 		
 		// Hack: For some reason I can't seem to hook the parse_request action, so resorting to this:
 		if( isset( $_POST['story'] ) && !empty( $_POST['story'] ) ) {
@@ -436,6 +445,7 @@ class MF_Timeline {
 	 **/
 	public function get_plugin_stories_list_page() {
 		global $wpdb;
+
 		$stories = $wpdb->get_results( $wpdb->prepare("SELECT * FROM `{$this->table_mf_timeline_stories}`" ), 'ARRAY_A' );
 	?>
 		
@@ -622,9 +632,11 @@ class MF_Timeline {
 	 * @return void
 	 * @author Matt Fairbrass
 	 **/
-	public function get_plugin_maintenance_page() {		
+	public function get_plugin_maintenance_page() {	
+		global $mf_timeline_db_version;
+			
 		if( isset( $_GET['action'] ) && $_GET['action'] == 'upgrade' ) {
-			$this->upgrade_db();
+			self::upgrade_db();
 		}
 		
 		$options = get_option( 'mf_timeline' );
@@ -633,10 +645,10 @@ class MF_Timeline {
 		
 		<ul>
 			<li><strong>Your Version:</strong> <?php echo $options['db_version'];?></li>
-			<li><strong>Latest Version:</strong> <?php echo $this->latest_db_version;?></li>
+			<li><strong>Latest Version:</strong> <?php echo $mf_timeline_db_version;?></li>
 		</ul>
 		<br/>
-		<?php if($options['db_version'] < $this->latest_db_version) : ?>
+		<?php if($options['db_version'] < $mf_timeline_db_version) : ?>
 			<p><strong style="color: #c40f0f;">Your MF-Timeline database is out of date, press the button below to run the upgrade tool.</strong></p>
 			
 			<form action="?page=mf-timeline&amp;tab=maintenance&amp;action=upgrade" method="post">
@@ -1152,7 +1164,7 @@ class MF_Timeline {
 		$options = get_option( 'mf_timeline' );
 
 		if( !isset( $options['db_version'] ) || empty( $options['db_version'] ) ) {
-			$this->install_db();
+			self::install_db();
 		}
 		else if( $options['db_version'] < $db_version ) {
 			$this->errors->add( 'db_upgrade', __('An upgrade is available for the MF-Timeline database. We recommend that you run the <a href="?page=mf-timeline&amp;tab=maintenance">maintenance upgrade tool</a> immediately to avoid any problems.' ) );
@@ -1190,7 +1202,7 @@ class MF_Timeline {
 			$options['db_version'] = 1;
 			update_option( 'mf_timeline', $options );
 
-			$this->upgrade_db();
+			self::upgrade_db();
 		}
 	}
 	
@@ -1201,11 +1213,11 @@ class MF_Timeline {
 	 * @return void
 	 * @author Matt Fairbrass
 	 **/
-	protected function upgrade_db() {
-		global $wpdb;
+	static function upgrade_db() {
+		global $wpdb, $mf_timeline_db_version;
 		$options = get_option( 'mf_timeline' );
 
-		if( $options['db_version'] < $this->latest_db_version ) {
+		if( $options['db_version'] < $mf_timeline_db_version ) {
 			switch( true ) {
 				/**
 				 * Version: 2
@@ -1213,7 +1225,9 @@ class MF_Timeline {
 				 * @author Matt Fairbrass
 				 */
 				case ($options['db_version'] < 2) :
-					$sql = "ALTER TABLE {$this->table_mf_timeline_stories} ADD `story_author` BIGINT( 20 ) UNSIGNED NOT NULL DEFAULT '0',
+					$table = $wpdb->prefix . 'mf_timeline_stories';
+					
+					$sql = "ALTER TABLE {$table} ADD `story_author` BIGINT( 20 ) UNSIGNED NOT NULL DEFAULT '0',
 					ADD INDEX (  `story_author` )";
 					
 					if( $wpdb->query($sql) !== false ) {
@@ -1221,9 +1235,15 @@ class MF_Timeline {
 					}
 			}
 			
-			unset( $this->errors->errors['db_upgrade'] ); // Remove the error about upgrading db.
 			update_option( 'mf_timeline', $options );
 		}
 	}
 }
+
+global $mf_timeline, $mf_timeline_db_version;
+
+$mf_timeline = new MF_Timeline();
+$mf_timeline_db_version = 2;
+
+register_activation_hook( __FILE__, 'MF_Timeline::install_db' );
 ?>

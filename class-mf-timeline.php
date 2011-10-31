@@ -859,66 +859,76 @@ class MF_Timeline {
 					
 					$html .= '<ol class="events">';
 						foreach( $timeline_events as $event ) {
-							$is_featured = get_post_meta( $event['id'], 'mf_timeline_featured', true );
-							
-							if( $is_featured == true ) {
-								$excerpt_length = 700;
-								$class = ' featured';
-							}
-							else {
-								$excerpt_length = 300;
-								$class = null;
-							}
-							
-							$html .= '<li class="event ' . $event['source'] . $class . '">';
-								$html .= '<div class="event_pointer"></div>';
-								$html .= '<div class="event_container">';
-									switch( $event['source'] ) {
-										case 'wp' :
+							switch( $event['source'] ) {
+								case 'wp' :
+									if( get_post_meta( $event['id'], 'mf_timeline_featured', true ) ) {
+										$excerpt_length = 700;
+										$class = ' featured';
+									}
+									else {
+										$excerpt_length = 300;
+										$class = null;
+									}
+								
+									$html .= '<li class="event ' . $event['source'] . $class . '">';
+										$html .= '<div class="event_pointer"></div>';
+										$html .= '<div class="event_container">';
 											$html .= '<div class="event_title">';
 												$html .= '<h3><a href="' . get_permalink( $event['id'] ) . '">' . $event['title'] . '</a></h3>';
-												
+									
 												$html .= '<span class="subtitle">';
 													$html .= $this->format_date( $event['date'] );
 												$html .= '</span>';
 											$html .= '</div>';
-											
+								
 											$html .= '<div class="event_content">';
 												$html .= apply_filters( 'the_content', $this->format_excerpt( $event['content'], $excerpt_length, $event['excerpt'] ) );
 											$html .= '</div>';
-										break;
-										
-										case 'twitter' :
+										$html .= '</div>';
+									$html .= '</li>';
+								break;
+								
+								case 'twitter' :
+									$html .= '<li class="event ' . $event['source'] . $class . '">';
+										$html .= '<div class="event_pointer"></div>';
+										$html .= '<div class="event_container">';
 											$html .= '<div class="event_title">';
 												$html .= '<img src="' . $event['author_image'] . '" alt="' . $event['author'] . '" width="50" height="50" class="profile_image" />';
 												$html .= '<h3><a href="http://www.twitter.com/' . $event['author'] . '/">@' . $event['author'] . '</a></h3>';
-												
+										
 												$html .= '<span class="subtitle">';
 													$html .= $this->format_date( $event['date'] );
 												$html .= '</span>';
 											$html .= '</div>';
-											
+									
 											$html .= '<div class="event_content">';
 												$html .= apply_filters( 'the_content', $this->format_text( $event['content'] ) );
 											$html .= '</div>';
-										break;
-										
-										case 'timeline_stories' :
+										$html .= '</div>';
+									$html .= '</li>';
+								break;
+								
+								case 'timeline_stories' :
+									$class = ( $event['featured'] == 1 ) ? ' featured' : null;
+									
+									$html .= '<li class="event ' . $event['source'] . $class . '">';
+										$html .= '<div class="event_pointer"></div>';
+										$html .= '<div class="event_container">';
 											$html .= '<div class="event_title">';
 												$html .= '<h3>' . $event['title'] . '</h3>';
-												
+										
 												$html .= '<span class="subtitle">';
 													$html .= $this->format_date( $event['date'] );
 												$html .= '</span>';
 											$html .= '</div>';
-											
+									
 											$html .= '<div class="event_content">';
 												$html .= apply_filters( 'the_content', $this->format_text( $event['content'] ) );
 											$html .= '</div>';
-										break;
-									}
-								$html .= '</div>';
-							$html .= '</li>';
+										$html .= '</div>';
+									$html .= '</li>';
+								break;
+							}
 						}
 					$html .= '</ol>';
 					

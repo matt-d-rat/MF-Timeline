@@ -306,9 +306,14 @@ class MF_Timeline {
 			<?php
 				switch( $_GET['tab'] ) {
 					case 'stories' :
-						if( $_GET['action'] == 'editor') {
+						if( $_GET['action'] == 'editor' ) {
 							$story_id = (int) $_GET['story_id'];
 							$this->get_plugin_stories_editor( $story_id );
+						}
+						else if( $_GET['action'] == 'delete' ) {
+							$story_id = (int) $_GET['story_id'];
+							$this->delete_story( $story_id );
+							$this->get_plugin_stories_list_page();
 						}
 						else {
 							$this->get_plugin_stories_list_page();
@@ -506,11 +511,7 @@ class MF_Timeline {
 		global $wpdb;
 		
 		if( isset( $story_id ) && $story_id != null ) {
-			$story = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$this->table_mf_timeline_stories} WHERE story_id = %d", $story_id ), 'ARRAY_A' );
-			
-			if( empty( $story ) ) {
-				wp_die( __( 'Invalid timeline story ID. The story you are looking for does not exist in the database.' ) );
-			}
+			$story = $this->get_story( $story_id );
 		}
 	?>
 		<div id="poststuff" class="metabox-holder has-right-sidebar">
@@ -583,6 +584,44 @@ class MF_Timeline {
 	}
 	
 	/**
+	 * Get Story
+	 * Returns the specified story from the database
+	 * @param int $story_id the id of the story to retrieve
+	 *
+	 * @return void
+	 * @author Matt Fairbrass
+	 **/
+	function get_story( $story_id ) {
+		global $wpdb;
+		$story = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$this->table_mf_timeline_stories} WHERE story_id = %d", $story_id ), 'ARRAY_A' );
+		
+		if(!empty($story)) {
+			return $story;
+		}
+		else {
+			wp_die( __( 'Invalid timeline story ID. The story you are looking for does not exist in the database.' ) );
+		}
+	}
+	
+	/**
+	 * Delete Story
+	 * Deletes the specified story from the MF-Timeline database.
+	 *
+	 * @param int $story_id the id of the story to delete
+	 *
+	 * @return void
+	 * @author Matt Fairbrass
+	 **/
+	protected function delete_story( $story_id ) {
+		global $wpdb;
+		$sql = $wpdb->prepare("DELETE FROM {$this->table_mf_timeline_stories} WHERE story_id = %d", $story_id);
+		
+		if($wpdb->query($sql) !== false) {
+			add_settings_error('general', 'settings_updated', __('Timeline story successfully deleted.'), 'updated');
+		}
+	}
+	
+	/**
 	 * Get Plugin Maintenance Page
 	 * Output the options for the plugin maintenance page.
 	 *
@@ -596,7 +635,7 @@ class MF_Timeline {
 		
 		$options = get_option( 'mf_timeline' );
 	?>
-		<p>The maintenance upgrade tool will upgrade your database to the latest version if a newer version is available. Please ensure that you have backed up the <strong>'mf_timeline_stories'</strong> table in your WordPress database <strong>before</strong> running the upgrade tool. I accept no responsibility for any data lost as a result of running the upgrade tool.</p>
+		<p>The maintenance upgrade tool will upgrade your database to the latest version if a newer version is available. Please ensure that you have backed up the <strong>'<?php echo $this->table_mf_timeline_stories; ?>'</strong> table in your WordPress database <strong>before</strong> running the upgrade tool. I accept no responsibility for any data lost as a result of running the upgrade tool.</p>
 		
 		<ul>
 			<li><strong>Your Version:</strong> <?php echo $options['db_version'];?></li>

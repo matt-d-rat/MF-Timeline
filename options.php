@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: WP Facebook Timeline (MF-Timeline)
-Plugin URI: http://www.aplaceformyhead.co.uk/mf-timeline
+Plugin URI: http://www.aplaceformyhead.co.uk/2011/10/05/wp-facebook-timeline-mf-timeline/
 Description: Creates a visual linear timeline representation from your Wordpress posts and other media sources in the style of Facebook Profile Timeline.
 Version: 1.0
 Author: Matt Fairbrass

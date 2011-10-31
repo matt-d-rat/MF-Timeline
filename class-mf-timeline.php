@@ -766,6 +766,30 @@ class MF_Timeline {
 	}
 	
 	/**
+	 * Get Content Stories
+	 * Returns an array of timeline stories organised by year
+	 *
+	 * @return void
+	 * @author Matt Fairbrass
+	 **/
+	function get_content_stories() {
+		global $wpdb;
+		
+		$sql = "SELECT story_id AS id, story_title AS title, story_content AS content, timeline_date AS date, featured FROM {$this->table_mf_timeline_stories}";
+		$results = $wpdb->get_results( $sql, 'ARRAY_A' );
+		
+		if( !empty( $results ) ) {
+			foreach( $results as $story ) {
+				$year = date( 'Y', strtotime( $story['date'] ) );
+				$story['source'] = 'timeline_stories';
+				$stories[$year][] = $story;
+			}
+			
+			return $stories;
+		}
+	}
+	
+	/**
 	 * Get Timeline Events
 	 * Returns an array of events organised by year.
 	 *
@@ -778,25 +802,20 @@ class MF_Timeline {
 	public function get_timeline_events() {
 		$posts = $this->get_content_posts();
 		$tweets = $this->get_content_tweets();
+		$stories = $this->get_content_stories();
 		
 		$events = array();
 		
 		// Create an array of years based on the years avaialble from the content sources
-		$years = array_unique( array_merge( (array) array_keys( $tweets ), (array) array_keys( $posts ) ) );		
+		$years = array_unique( array_merge( (array) array_keys( $tweets ), (array) array_keys( $posts ), (array) array_keys( $stories ) ) );		
 		
-		if( !empty( $posts ) && !empty( $tweets ) ) {
-			foreach( $years as $year ) {
-			    $events[$year] = array_merge( (array) $posts[$year], (array) $tweets[$year] );
-			}
-		}
-		else if( !empty( $posts ) ) {
-			$events = $posts;
-		}
-		else if( !empty( $tweets ) ) {
-			$events = $tweets;
+		if( empty( $posts ) && empty( $tweets ) && empty( $stories ) ) {
+			return false;
 		}
 		else {
-			return null;
+			foreach( $years as $year ) {
+			    $events[$year] = array_merge( (array) $posts[$year], (array) $tweets[$year], (array) $stories[$year] );
+			}
 		}
 		
 		foreach( $events as $year=>&$event ) {
@@ -853,33 +872,51 @@ class MF_Timeline {
 							
 							$html .= '<li class="event ' . $event['source'] . $class . '">';
 								$html .= '<div class="event_pointer"></div>';
-								
 								$html .= '<div class="event_container">';
-									$html .= '<div class="event_title">';
-										switch( $event['source'] ) {
-											case 'wp' :
+									switch( $event['source'] ) {
+										case 'wp' :
+											$html .= '<div class="event_title">';
 												$html .= '<h3><a href="' . get_permalink( $event['id'] ) . '">' . $event['title'] . '</a></h3>';
-											break;
-
-											case 'twitter' :
+												
+												$html .= '<span class="subtitle">';
+													$html .= $this->format_date( $event['date'] );
+												$html .= '</span>';
+											$html .= '</div>';
+											
+											$html .= '<div class="event_content">';
+												$html .= apply_filters( 'the_content', $this->format_excerpt( $event['content'], $excerpt_length, $event['excerpt'] ) );
+											$html .= '</div>';
+										break;
+										
+										case 'twitter' :
+											$html .= '<div class="event_title">';
 												$html .= '<img src="' . $event['author_image'] . '" alt="' . $event['author'] . '" width="50" height="50" class="profile_image" />';
 												$html .= '<h3><a href="http://www.twitter.com/' . $event['author'] . '/">@' . $event['author'] . '</a></h3>';
-											break;
-										}
+												
+												$html .= '<span class="subtitle">';
+													$html .= $this->format_date( $event['date'] );
+												$html .= '</span>';
+											$html .= '</div>';
+											
+											$html .= '<div class="event_content">';
+												$html .= apply_filters( 'the_content', $this->format_text( $event['content'] ) );
+											$html .= '</div>';
+										break;
 										
-										$html .= '<span class="subtitle">';
-											$html .= $this->format_date( $event['date'] );
-										$html .= '</span>';
-									$html .= '</div>';
-									
-									$html .= '<div class="event_content">';
-										if($event['source'] == 'wp') {
-											$html .= apply_filters( 'the_content', $this->format_excerpt( $event['content'], $excerpt_length, $event['excerpt'] ) );
-										}
-										else {
-											$html .= apply_filters( 'the_content', $this->format_text( $event['content'] ) );
-										}
-									$html .= '</div>';
+										case 'timeline_stories' :
+											$html .= '<div class="event_title">';
+												$html .= '<h3>' . $event['title'] . '</h3>';
+												
+												$html .= '<span class="subtitle">';
+													$html .= $this->format_date( $event['date'] );
+												$html .= '</span>';
+											$html .= '</div>';
+											
+											$html .= '<div class="event_content">';
+												$html .= apply_filters( 'the_content', $this->format_text( $event['content'] ) );
+											$html .= '</div>';
+										break;
+									}
 								$html .= '</div>';
 							$html .= '</li>';
 						}

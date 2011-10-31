@@ -240,7 +240,7 @@ class MF_Timeline {
 			?>
 				<?php foreach( $errors as $error ) : ?>
 						<div class="error">
-							<p><strong>MF-Timeline Error:</strong> <?php echo $error; ?></p>
+							<p><strong><?php echo $error; ?></strong></p>
 						</div>
 				<?php endforeach; ?>
 			<?php endif;?>
@@ -972,7 +972,7 @@ class MF_Timeline {
 			$this->install_db();
 		}
 		else if($options['db_version'] < $db_version) {
-			$this->errors->add( 'db_upgrade', __('There is an upgrade available for the MF-Timeline database. We recommend that you run the <a href="?page=mf-timeline&amp;tab=maintenance">maintenance upgrade tool</a> immediately to avoid any problems.' ) );
+			$this->errors->add( 'db_upgrade', __('An upgrade is available for the MF-Timeline database. We recommend that you run the <a href="?page=mf-timeline&amp;tab=maintenance">maintenance upgrade tool</a> immediately to avoid any problems.' ) );
 		}
 	}
 	

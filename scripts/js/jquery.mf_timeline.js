@@ -1,14 +1,14 @@
-$(document).ready(function(){
-	if($('.timeline .timeline_nav')) {
-		$('.timeline .timeline_nav').stickyfloat({duration: 500});
+jQuery(document).ready(function(){
+	if(jQuery('.timeline .timeline_nav')) {
+		jQuery('.timeline .timeline_nav').stickyfloat({duration: 500});
 	}
 	
-	$('.timeline .section').each(function(){
-		$(this).afterScroll(function(){
+	jQuery('.timeline .section').each(function(){
+		jQuery(this).afterScroll(function(){
 			// After we have scolled past the top
-			var year = $(this).attr('id');
-			$('ol.timeline_nav li').removeClass('current');
-			$('ol.timeline_nav li#menu_year_' + year).addClass('current');
+			var year = jQuery(this).attr('id');
+			jQuery('ol.timeline_nav li').removeClass('current');
+			jQuery('ol.timeline_nav li#menu_year_' + year).addClass('current');
 		});
 	});
 });

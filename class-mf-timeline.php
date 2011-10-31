@@ -220,9 +220,11 @@ class MF_Timeline {
 		$valid_input['story_title'] = wp_kses_post( $input['story_title'] );
 		$valid_input['story_content'] = wp_kses_post( (string) $input['story_content'] );
 		$valid_input['timeline_date'] = date( 'Y-m-d', strtotime( esc_html( $input['timeline_date'] ) ) );
-		$valid_input['featured'] = (int) ( $input['featured'] == 1 ? 1 : 0 );
+		$valid_input['featured'] = (int) ( isset( $input['featured'] ) && $input['featured'] == 1 ? 1 : 0 );
 		$valid_input['story_modified'] = date( 'Y-m-d H:i:s' );
 		$valid_input['story_author'] = (int) $input['story_author'];
+		
+		
 		
 		if( $input['story_id'] == null ) {
 			$result = $wpdb->insert( $this->table_mf_timeline_stories, $valid_input, array( '%s','%s','%s','%d','%s','%d' ) );
@@ -569,7 +571,7 @@ class MF_Timeline {
 				
 				<?php global $current_user; get_currentuserinfo(); ?>
 				<input type="hidden" name="story[story_author]" value="<?php echo ( !empty( $story['story_author'] ) ) ? $story['story_author'] : $current_user->ID;?>" />
-				<input type="hidden" name="story[story_id]" value="<?php echo $story['story_id'];?>" />
+				<input type="hidden" name="story[story_id]" value="<?php echo ( isset( $story['story_id'] ) ) ? $story['story_id'] : null;?>" />
 			</form>
 		</div>
 	<?php	
@@ -1164,7 +1166,7 @@ class MF_Timeline {
 	 * @return void
 	 * @author Matt Fairbrass
 	 **/
-	public function install_db() {
+	static function install_db() {
 		global $wpdb;
 		$options = get_option( 'mf_timeline' );
 		

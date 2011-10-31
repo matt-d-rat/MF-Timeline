@@ -65,6 +65,9 @@ A new version of MF-Timeline is available. Upgrade to the latest version.
 
 == Changelog ==
 
+= 1.0.2 =
+* Corrected git svn version out of date issue.
+
 = 1.0.1 =
 * Fixed character encoding bug when formatting twitter usernames and hashtags.
 

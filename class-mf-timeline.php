@@ -13,6 +13,7 @@ class MF_Timeline {
 		add_action( 'admin_init', array( &$this, 'mf_timeline_admin_init') );
 		add_action( 'wp_print_styles', array( &$this, 'mf_timeline_styles' ) );
 		add_action( 'init', array( &$this, 'mf_timeline_js' ) );
+		add_action("admin_head", array( &$this, "load_tiny_mce" ) );
 		
 		// Shortcode
 		add_shortcode( 'mf_timeline', array( &$this, 'shortcode' ) );  
@@ -29,6 +30,8 @@ class MF_Timeline {
 		register_setting( 'mf_timeline_settings', 'mf_timeline', array( &$this, 'validate_settings' ) );
 		wp_register_style( 'mf_timeline_admin_styles', plugins_url( 'styles/admin.min.css', __FILE__ ) );
 		wp_enqueue_style( 'mf_timeline_admin_styles' );
+		wp_enqueue_script( array( 'jquery', 'editor', 'thickbox', 'media-upload' ) );
+		wp_enqueue_style( 'thickbox' );
 	}
 	
 	/**
@@ -38,7 +41,7 @@ class MF_Timeline {
 	 * @return void
 	 * @author Matt Fairbrass
 	 **/
-	function mf_timeline_styles() {
+	public function mf_timeline_styles() {
 		wp_register_style( 'mf_timeline_styles', plugins_url( 'styles/style.min.css' , __FILE__ ) );
         wp_enqueue_style( 'mf_timeline_styles' );
 	}
@@ -50,7 +53,7 @@ class MF_Timeline {
 	 * @return void
 	 * @author Matt Fairbrass
 	 **/
-	function mf_timeline_js() {
+	public function mf_timeline_js() {
 		$options = get_option( 'mf_timeline' );
 		
 		if( !is_admin() && $options['options']['timeline_nav'] == 1 ) {	
@@ -65,6 +68,22 @@ class MF_Timeline {
 				wp_enqueue_script( 'stickyfloat' );
 			}	
 		}
+	}
+	
+	/**
+	 * Load Tiny MCE
+	 * Laods the scripts used by the visual editor
+	 *
+	 * @see add_action('admin_head', 'load_tiny_mce');
+	 *
+	 * @return void
+	 * @author Matt Fairbrass
+	 **/
+	public function load_tiny_mce() {
+		wp_tiny_mce( false, array(
+			'editor_selector' => 'mf_timeline[stories][][content]'
+			) 
+		);
 	}
 	
 	
@@ -186,102 +205,231 @@ class MF_Timeline {
 			<div id="nav">
 				<h3 class="themes-php">
 					<a class="nav-tab <?php echo $settings_active;?>" href="?page=mf-timeline&amp;tab=settings">Settings</a>
+					<a class="nav-tab <?php echo $stories_active;?>" href="?page=mf-timeline&amp;tab=stories">Timeline Stories</a>
 				</h3>
 			</div>
 			
-			<?php if( $_GET['tab'] == 'settings' || !isset($_GET['tab'] ) ) :?>
-				<p>Configure the default MF-Timeline settings below. You can override these settings when calling the shortcode in your posts or the function in your templates.</p>
-				<form action="options.php" method="POST">
-					<?php 
-						settings_fields( 'mf_timeline_settings' );
-						$options = get_option( 'mf_timeline' );
-					?>
-					<h3>General Settings</h3>
-					<fieldset>
-						<ul>
-							<li>
-								<label for="mf_timeline[options][timeline_nav]"><strong>Timeline Years Menu:</strong></label><br/>
-								<select name="mf_timeline[options][timeline_nav]" id="mf_timeline[options][timeline_nav]" style="width: 100px;">
-									<option value="1" <?php selected( '1', $options['options']['timeline_nav'] ); ?>>Show</option>
-									<option value="0" <?php selected( '0', $options['options']['timeline_nav'] ); ?>>Hide</option>
-								</select><br/>
-								<span class="description">Appears fixed next to the timeline allowing the user to navigate past events more easily.</span>
-							</li>
-						</ul>
-					</fieldset>
-					<h3>Wordpress Content</h3>
-					<fieldset>
-						<ul>
-							<li>
-								<h4>Include content from:</h4>
-								<?php foreach( get_post_types( '', 'object' ) as $key=>$post_type ) :?>
-									<input type="checkbox" name="mf_timeline[options][wp][content][<?php echo $key;?>]" id="mf_timeline[options][wp][content][<?php echo $key;?>]" value="1" <?php checked( '1', $options['options']['wp']['content'][$key] ); ?> />
-									<label for="mf_timeline[options][wp][content][<?php echo $key;?>]"><?php _e( $post_type->labels->name ); ?></label><br />
-								<?php endforeach;?>
-							</li>
-							<li>
-								<h4>Filter by the following taxonomies:</h4>
-								<p class="description clear">Leave blank to not filter by taxonomies.</p>
-								<?php global $wp_taxonomies; ?>
-								<?php if ( is_array( $wp_taxonomies ) ) : ?>
-									<?php foreach ( $wp_taxonomies as $tax ) :?>
-										<?php if ( !in_array( $tax->name, array( 'nav_menu', 'link_category', 'podcast_format' ) ) ) : ?>
-											<?php if ( !is_taxonomy_hierarchical( $tax->name ) ) : // non-hierarchical ?>
-												<?php 
-													$nonhierarchical .= '<p class="alignleft"><label for="mf_timeline[options][wp][filter][term][' . esc_attr($tax->name).']"><strong>' . esc_html( $tax->label ) . ': </strong></label><br />';
-													$nonhierarchical .= '<input type="text" name="mf_timeline[options][wp][filter][term][' . esc_attr( $tax->name ) . ']" id="mf_timeline[options][wp][filter][term][' . esc_attr( $tax->name ) . ']" class="widefloat" style="margin-right: 2em;" value="' . $options['options']['wp']['filter']['term'][$tax->name] . '" /></p>';
-												?>
-											<?php else: // hierarchical ?>
-												 <div class="categorychecklistbox">
-													<label><strong><?php echo $tax->label;?></strong><br />
-										        	<ul class="categorychecklist">
-											     		<?php $terms = get_terms( $tax->name );?>
-														
-														<?php foreach( $terms as $term ) :?>
-															<li>
-																<input type="checkbox" name="mf_timeline[options][wp][filter][taxonomy][<?php echo $term->term_id;?>]" id="mf_timeline[options][wp][filter][taxonomy][<?php echo $term->term_id;?>]" value="1" <?php checked('1', $options['options']['wp']['filter']['taxonomy'][$term->term_id]); ?> />
-																<label for="mf_timeline[options][wp][filter][taxonomy][<?php echo esc_html($term->term_id);?>]"><?php echo $term->name;?></label>
-															</li>
-														<?php endforeach;?>
-													</ul>  
-												</div>
-											<?php endif;?>
-										<?php endif;?>
-									<?php endforeach; ?>
-								<?php endif; ?>
-							</li>
-							<li class="clear">
-								<br /><h4>Filter by the following terms:</h4>
-								<p class="description">Separate terms with commas. Leave blank to not filter by terms.</p>
-								<?php echo $nonhierarchical;?>
-							</li>
-						</ul>
-					</fieldset>
-				
-					<h3>Twitter Content</h3>
-					<fieldset>
-						<ul>
-							<li>
-								<label for="mf_timeline[options][twitter][content][username]"><strong>Twitter Username:</strong></label><br/>
-								<input type="text" name="mf_timeline[options][twitter][content][username]" id="mf_timeline[options][twitter][content][username]" value="<?php echo $options['options']['twitter']['content']['username'];?>" />
-							</li>
-							<li>
-								<label for="mf_timeline[options][twitter][filter][tags]"><strong>Filter by the following hashtags:</strong></label><br/>
-								<input type="text" name="mf_timeline[options][twitter][filter][tags]" id="mf_timeline[options][twitter][filter][tags]" value="<?php echo $options['options']['twitter']['filter']['tags'];?>" />
-								<span class="description">Separate tags with commas. Leave blank to not filter by any tags.</span>
-							</li>
-						</ul>
-					</fieldset>
-					<p class="submit">
-						<input type="submit" name="submit" id="submit" class="button-primary" value="Save Settings">
-					</p>
-				</form>
-			<?php elseif( $_GET['tab'] == 'stories' ) :?>
-				<p>Timeline stories enable you to add content to the timeline without the need to create individual posts. You can manage all your timeline stores from this area.</p>
-			<?php endif;?>
+			<?php
+				switch( $_GET['tab'] ) {
+					case 'stories' :
+						if( $_GET['action'] == 'editor') {
+							$story_id = (int) $_GET['story_id'];
+							$this->get_plugin_stories_editor($story_id);
+						}
+						else {
+							$this->get_plugin_stories_list_page();
+						}
+					break;
+					
+					case 'settings' :
+					default :
+						$this->get_plugin_settings_page();
+					break;
+				}
+			?>
 		</div>
-		
 	<?php
+	}
+	
+	/**
+	 * Get Plugin Settings Page
+	 * Output the settings page in the plugin options.
+	 *
+	 * @see get_plugion_options_page()
+	 *
+	 * @return void
+	 * @author Matt Fairbrass
+	 **/
+	public function get_plugin_settings_page() { ?>
+		<p>Configure the default MF-Timeline settings below. You can override these settings when calling the shortcode in your posts or the function in your templates.</p>
+		<form action="options.php" method="POST">
+			<?php 
+				settings_fields( 'mf_timeline_settings' );
+				$options = get_option( 'mf_timeline' );
+			?>
+			<h3>General Settings</h3>
+			<fieldset>
+				<ul>
+					<li>
+						<label for="mf_timeline[options][timeline_nav]"><strong>Timeline Years Menu:</strong></label><br/>
+						<select name="mf_timeline[options][timeline_nav]" id="mf_timeline[options][timeline_nav]" style="width: 100px;">
+							<option value="1" <?php selected( '1', $options['options']['timeline_nav'] ); ?>>Show</option>
+							<option value="0" <?php selected( '0', $options['options']['timeline_nav'] ); ?>>Hide</option>
+						</select><br/>
+						<span class="description">Appears fixed next to the timeline allowing the user to navigate past events more easily.</span>
+					</li>
+				</ul>
+			</fieldset>
+			<h3>Wordpress Content</h3>
+			<fieldset>
+				<ul>
+					<li>
+						<h4>Include content from:</h4>
+						<?php foreach( get_post_types( '', 'object' ) as $key=>$post_type ) :?>
+							<input type="checkbox" name="mf_timeline[options][wp][content][<?php echo $key;?>]" id="mf_timeline[options][wp][content][<?php echo $key;?>]" value="1" <?php checked( '1', $options['options']['wp']['content'][$key] ); ?> />
+							<label for="mf_timeline[options][wp][content][<?php echo $key;?>]"><?php _e( $post_type->labels->name ); ?></label><br />
+						<?php endforeach;?>
+					</li>
+					<li>
+						<h4>Filter by the following taxonomies:</h4>
+						<p class="description clear">Leave blank to not filter by taxonomies.</p>
+						<?php global $wp_taxonomies; ?>
+						<?php if ( is_array( $wp_taxonomies ) ) : ?>
+							<?php foreach ( $wp_taxonomies as $tax ) :?>
+								<?php if ( !in_array( $tax->name, array( 'nav_menu', 'link_category', 'podcast_format' ) ) ) : ?>
+									<?php if ( !is_taxonomy_hierarchical( $tax->name ) ) : // non-hierarchical ?>
+										<?php 
+											$nonhierarchical .= '<p class="alignleft"><label for="mf_timeline[options][wp][filter][term][' . esc_attr($tax->name).']"><strong>' . esc_html( $tax->label ) . ': </strong></label><br />';
+											$nonhierarchical .= '<input type="text" name="mf_timeline[options][wp][filter][term][' . esc_attr( $tax->name ) . ']" id="mf_timeline[options][wp][filter][term][' . esc_attr( $tax->name ) . ']" class="widefloat" style="margin-right: 2em;" value="' . $options['options']['wp']['filter']['term'][$tax->name] . '" /></p>';
+										?>
+									<?php else: // hierarchical ?>
+										 <div class="categorychecklistbox">
+											<label><strong><?php echo $tax->label;?></strong><br />
+								        	<ul class="categorychecklist">
+									     		<?php $terms = get_terms( $tax->name );?>
+												
+												<?php foreach( $terms as $term ) :?>
+													<li>
+														<input type="checkbox" name="mf_timeline[options][wp][filter][taxonomy][<?php echo $term->term_id;?>]" id="mf_timeline[options][wp][filter][taxonomy][<?php echo $term->term_id;?>]" value="1" <?php checked('1', $options['options']['wp']['filter']['taxonomy'][$term->term_id]); ?> />
+														<label for="mf_timeline[options][wp][filter][taxonomy][<?php echo esc_html($term->term_id);?>]"><?php echo $term->name;?></label>
+													</li>
+												<?php endforeach;?>
+											</ul>  
+										</div>
+									<?php endif;?>
+								<?php endif;?>
+							<?php endforeach; ?>
+						<?php endif; ?>
+					</li>
+					<li class="clear">
+						<br /><h4>Filter by the following terms:</h4>
+						<p class="description">Separate terms with commas. Leave blank to not filter by terms.</p>
+						<?php echo $nonhierarchical;?>
+					</li>
+				</ul>
+			</fieldset>
+		
+			<h3>Twitter Content</h3>
+			<fieldset>
+				<ul>
+					<li>
+						<label for="mf_timeline[options][twitter][content][username]"><strong>Twitter Username:</strong></label><br/>
+						<input type="text" name="mf_timeline[options][twitter][content][username]" id="mf_timeline[options][twitter][content][username]" value="<?php echo $options['options']['twitter']['content']['username'];?>" />
+					</li>
+					<li>
+						<label for="mf_timeline[options][twitter][filter][tags]"><strong>Filter by the following hashtags:</strong></label><br/>
+						<input type="text" name="mf_timeline[options][twitter][filter][tags]" id="mf_timeline[options][twitter][filter][tags]" value="<?php echo $options['options']['twitter']['filter']['tags'];?>" />
+						<span class="description">Separate tags with commas. Leave blank to not filter by any tags.</span>
+					</li>
+				</ul>
+			</fieldset>
+			<p class="submit">
+				<input type="submit" name="submit" id="submit" class="button-primary" value="Save Settings">
+			</p>
+		</form>
+	<?php
+	}
+	
+	/**
+	 * Get Plugin Stories List Page
+	 * Outputs the stories list page.
+	 *
+	 *	@see get_plugin_options_page()
+	 *
+	 * @return void
+	 * @author Matt Fairbrass
+	 **/
+	public function get_plugin_stories_list_page() { 
+		settings_fields( 'mf_timeline_settings' );
+		$options = get_option( 'mf_timeline' );
+	?>
+		
+		<p>Timeline stories enable you to add content to the timeline without the need to create individual posts. You can manage all your timeline stores from this area.</p><br />
+		<p><a href="?page=mf-timeline&amp;tab=stories&amp;action=editor" class="add-new-h2">Add New Story</a></p>
+		
+		<table class="widefat post fixed" cellspacing="0">
+			<thead>
+				<tr>
+					<th class="manage-column" scope="col" width="40">ID</th>
+					<th class="manage-column column-title" scope="col">Title</th>
+					<th scope="col" width="75">Author</th>
+					<th scope="col" width="125">Timeline Date</th>
+				</tr>			
+			</thead>
+			<tfoot>
+				<tr>
+					<th class="manage-column" scope="col" width="40">ID</th>
+					<th class="manage-column column-title" scope="col">Title</th>
+					<th scope="col column-title" width="75">Author</th>
+					<th scope="col column-date" width="125">Timeline Date</th>
+				</tr>			
+			</tfoot>
+		
+			<tbody>
+				<?php foreach( $options['stories'] as $id=>$story ) :?>
+					<tr>
+						<th scope="row">
+							<?php echo $id;?>
+						</th>
+						<td class="column-title">
+							<strong><a class="row-title" href="#"><?php $story['title']?></a></strong>
+							<div class="row-actions">
+								<span class="edit"><a href="?page=mf-timeline&amp;tab=stories&amp;action=editor&amp;story_id=<?php echo $id?>">Edit</a></span>
+								<span class="edit"><a href="?page=mf-timeline&amp;tab=stories&amp;action=delete&amp;story_id=<?php echo $id?>">Delete Permanently</a></span>
+							</div>
+						</td>
+						<td class="column-author">
+							<a href="#"><?php echo $story['author']?></a>
+						</td>
+						<td>
+							<?php echo $story['timeline_date'];?>
+						</td>
+					</tr>
+				<?php endforeach;?>
+			</tbody>
+		</table>
+	<?php	
+	}
+	
+	/**
+	 * Get Plugin Stories Editor
+	 * Outputs the timeline stories editor page.
+	 * 
+	 * @param $story_id int the id of the story we are editing. If null we are adding a new story.
+	 *
+	 * @return void
+	 * @author Matt Fairbrass
+	 **/
+	public function get_plugin_stories_editor( $story_id = null ) {
+		settings_fields( 'mf_timeline_settings' );
+		$options = get_option( 'mf_timeline' );
+		
+		if( isset( $story_id ) && $story_id != null && !in_array( $options['stories'] ) ) {
+			wp_die( __( "Invalid story ID provided. The story you're looking for may have been deleted." ) );
+		}
+		else {
+			unset($story_id);
+		}
+		
+		//
+	?>
+		<form action="#" method="POST">
+			<fieldset>
+				<ul>
+					<li>
+						<div id="titlediv">
+							<input type="text" name="mf_timeline[stories][<?php echo $story_id?>][title]" id="title" value="<?php echo $options['stories'][$story_id]['title']?>" class="title" placeholder="Enter story title here" tabindex="1" />
+						</div>
+					</li>
+					<li>
+						<div id="postdivrich" class="postarea">
+							<?php the_editor( $options['stories'][$story_id]['content'], 'mf_timeline[stories]['.$story_id.'][content]', 'title', true, 2 );?>
+						</div>
+					</li>
+				</ul>
+			</fieldset>
+		</form>
+	<?php	
 	}
 	
 	/**
@@ -291,7 +439,7 @@ class MF_Timeline {
 	 * @return $posts array the posts returned by the query
 	 * @author Matt Fairbrass
 	 **/
-	protected function get_content_posts() {
+	public function get_content_posts() {
 		global $wpdb;
 		$options = get_option( 'mf_timeline' );
 		
@@ -366,7 +514,7 @@ class MF_Timeline {
 	 * @return $tweets array the tweets returned by the query
 	 * @author Matt Fairbrass
 	 **/
-	protected function get_content_tweets() {
+	public function get_content_tweets() {
 		global $wpdb;
 		$options = get_option( 'mf_timeline' );
 		
@@ -423,7 +571,7 @@ class MF_Timeline {
 	 * @return $events array the events merged returned by the queries.
 	 * @author Matt Fairbrass
 	 **/
-	protected function get_timeline_events() {
+	public function get_timeline_events() {
 		$posts = $this->get_content_posts();
 		$tweets = $this->get_content_tweets();
 		
@@ -551,7 +699,7 @@ class MF_Timeline {
 	 * @return void
 	 * @author Matt Fairbrass
 	 **/
-	function get_timeline_nav($years) {
+	public function get_timeline_nav($years) {
 		$options = get_option( 'mf_timeline' );
 		
 		if( $options['options']['timeline_nav'] == 1 ) {
@@ -575,7 +723,7 @@ class MF_Timeline {
 	 * @return $difference $periods[$j] {$tense}
 	 * @author Matt Fairbrass
 	 **/
-	protected function format_date($date) {
+	public function format_date($date) {
 	    if( empty( $date ) ) {
 	        return false;
 	    }
@@ -630,7 +778,7 @@ class MF_Timeline {
 	 * @return $text string the formatted text.
 	 * @author Matt Fairbrass
 	 **/
-	function format_excerpt( $text, $length = 140, $excerpt ) {
+	public function format_excerpt( $text, $length = 140, $excerpt ) {
 	    if ( $excerpt ) return $excerpt;
 
 	    $text = strip_shortcodes( $text );
@@ -669,7 +817,7 @@ class MF_Timeline {
 	 * @return $text string the formatted text
 	 * @author Matt Fairbrass
 	 **/
-	function format_text( $text ) {
+	public function format_text( $text ) {
 		$text = $this->format_text_to_links($text);
 		$text = $this->format_text_to_twitter($text);
 		
@@ -685,7 +833,7 @@ class MF_Timeline {
 	 * @return $text string the formatted text
 	 * @author Matt Fairbrass
 	 **/
-	function format_text_to_links( $text ) {
+	public function format_text_to_links( $text ) {
 		if(empty($text)) {
 			return null;
 		}
@@ -706,7 +854,7 @@ class MF_Timeline {
 	 * @return $text string the formatted text
 	 * @author Matt Fairbrass
 	 **/
-	function format_text_to_twitter($text) {
+	public function format_text_to_twitter($text) {
 		if( empty( $text ) ) {
 			return null;
 		}

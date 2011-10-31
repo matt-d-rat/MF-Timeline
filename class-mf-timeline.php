@@ -57,14 +57,12 @@ class MF_Timeline {
 			if ( function_exists( 'wp_register_script' ) ) {
 				wp_register_script( 'afterscroll', plugins_url( 'scripts/js/jquery.afterscroll.min.js', __FILE__), array( 'jquery' ) );
 				wp_register_script( 'stickyfloat', plugins_url( 'scripts/js/jquery.stickyfloat.min.js', __FILE__ ), array( 'jquery' ) );
-				wp_register_script( 'mf_timeline', plugins_url( 'scripts/js/jquery.mf_timeline.min.js', __FILE__ ), array( 'jquery', 'afterscroll', 'stickyfloat' ), false, true );
 			}
 			
 			if ( function_exists( 'wp_enqueue_script' ) ) {
 				wp_enqueue_script( 'jquery' );
 				wp_enqueue_script( 'afterscroll' );
 				wp_enqueue_script( 'stickyfloat' );
-				wp_enqueue_script( 'mf_timeline' );
 			}	
 		}
 	}
@@ -562,6 +560,7 @@ class MF_Timeline {
 					$html .= '<li id="menu_year_' . $year . '"><a href="#' . $year . '">' . $year . '</a></li>';
 				}
 			$html .= '</ol>';
+			$html .= '<script type="text/javascript" src="' . plugins_url( 'scripts/js/jquery.mf_timeline.min.js', __FILE__ ) . '"></script>';
 			
 			return $html;
 		}

@@ -3,7 +3,7 @@
 Plugin Name: WP Facebook Timeline (MF-Timeline)
 Plugin URI: http://www.aplaceformyhead.co.uk/2011/10/05/wp-facebook-timeline-mf-timeline/
 Description: Creates a visual linear timeline representation from your Wordpress posts and other media sources in the style of Facebook Profile Timeline.
-Version: 1.1.6
+Version: 1.1.7
 Author: Matt Fairbrass
 Author URI: http://www.aplaceformyhead.co.uk
 License: GPLv2
@@ -488,7 +488,7 @@ class MF_Timeline {
 							<a href="#"><?php echo $user->display_name; ?></a>
 						</td>
 						<td>
-							<?php echo date( 'm/d/Y', strtotime( $story['timeline_date'] ) );?>
+							<?php echo date( 'Y/m/d', strtotime( $story['timeline_date'] ) );?>
 						</td>
 					</tr>
 				<?php endforeach;?>
@@ -530,7 +530,7 @@ class MF_Timeline {
 											<span id="timestamp">
 												<label for="timeline_date">Date:</label>
 											</span>
-											<input type="text" name="story[timeline_date]" id="timeline_date" value="<?php echo ( !empty( $story['timeline_date'] ) ) ? $story['timeline_date'] : date( 'Y-m-d' );?>" />
+											<input type="text" name="story[timeline_date]" id="timeline_date" value="<?php echo ( !empty( $story['timeline_date'] ) ) ? date( 'Y/m/d', strtotime( $story['timeline_date'] ) ) : date( 'Y/m/d' );?>" />
 										</div>
 										
 										<div class="misc-pub-section misc-pub-section-last">

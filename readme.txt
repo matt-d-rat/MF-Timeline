@@ -4,7 +4,7 @@ Donate link: http://www.aplaceformyhead.co.uk
 Tags: timeline, facebook, twitter, time line, event, stories, story, milestone
 Requires at least: 3.1.3
 Tested up to: 3.2.1
-Stable tag: 1.1
+Stable tag: 1.1.6
 
 Creates a visual linear timeline representation from your Wordpress posts and other media sources in the style of Facebook Profile Timeline.
 
@@ -69,10 +69,30 @@ If you have any other ideas for sources I can make available to the timeline the
 
 == Upgrade Notice ==
 
-= 1.1 =
+= 1.1.6 =
 A new version of MF-Timeline is available. Upgrade to the latest version.
 
 == Changelog ==
+
+= 1.1.6 =
+* Fixed slashes being added to apostrophes in timeline stories titles and content.
+
+= 1.1.5 =
+* Minor fixes and resolved conflicts caused by git-svn rebase.
+
+* Fixed minor bugs which caused fatal errors for object properties being used in a static context for the new activation hook. Fixes issue #2.
+* Removed the options.php to condense the code into one single file. Users who have previously activated the plugin prior to this update will need to reactivate the plugin.
+
+= 1.1.3 =
+* Fixed PHP fatal error which was caused by referencing object property from static context.
+
+= 1.1.2 =
+* Minor bug fixes for PHP warnings and notices.
+
+= 1.1.1 =
+* Fixed major bug which caused warnings to be thrown when passing empty events.
+* Cleaned up plugin notices and error warnings.
+* Refined the timeline event year merge function.
 
 = 1.1 =
 * Added support for Timeline Stories. Timeline Stories provide a means of adding content directly to the timeline without the need for creating separate WordPress posts. They are designed to act as snippets of information more than anything - if you plan on creating longer contents, I would recommend you create standard posts instead.

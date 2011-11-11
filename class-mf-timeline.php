@@ -3,7 +3,7 @@
 Plugin Name: WP Facebook Timeline (MF-Timeline)
 Plugin URI: http://www.aplaceformyhead.co.uk/2011/10/05/wp-facebook-timeline-mf-timeline/
 Description: Creates a visual linear timeline representation from your Wordpress posts and other media sources in the style of Facebook Profile Timeline.
-Version: 1.1.5
+Version: 1.1.6
 Author: Matt Fairbrass
 Author URI: http://www.aplaceformyhead.co.uk
 License: GPLv2
@@ -477,7 +477,7 @@ class MF_Timeline {
 							<?php echo $story['story_id']; ?>
 						</th>
 						<td class="column-title">
-							<strong><a class="row-title" href="#"><?php echo $story['story_title']; ?></a></strong>
+							<strong><a class="row-title" href="#"><?php echo stripslashes( $story['story_title'] ); ?></a></strong>
 							<div class="row-actions">
 								<span class="edit"><a href="?page=mf-timeline&amp;tab=stories&amp;action=editor&amp;story_id=<?php echo $story['story_id']; ?>">Edit</a> | </span>
 								<span class="edit"><a href="?page=mf-timeline&amp;tab=stories&amp;action=delete&amp;story_id=<?php echo $story['story_id']; ?>">Delete Permanently</a></span>
@@ -561,7 +561,7 @@ class MF_Timeline {
 							<ul>
 								<li>
 									<div id="titlediv">
-										<input type="text" name="story[story_title]" id="title" value="<?php echo ( isset( $story['story_title'] ) ) ? $story['story_title'] : null; ?>" class="title" placeholder="Enter story title here" tabindex="1" />
+										<input type="text" name="story[story_title]" id="title" value="<?php echo ( isset( $story['story_title'] ) ) ? stripslashes( $story['story_title'] ) : null; ?>" class="title" placeholder="Enter story title here" tabindex="1" />
 									</div>
 								</li>
 								<li>
@@ -571,7 +571,7 @@ class MF_Timeline {
 												$story['story_content'] = null;
 											}
 										?>
-										<?php the_editor( $story['story_content'], 'story[story_content]', 'title', true, 2 );?>
+										<?php the_editor( stripslashes( $story['story_content'] ), 'story[story_content]', 'title', true, 2 );?>
 									</div>
 								</li>
 							</ul>
@@ -950,7 +950,7 @@ class MF_Timeline {
 										$html .= '<div class="event_pointer"></div>';
 										$html .= '<div class="event_container">';
 											$html .= '<div class="event_title">';
-												$html .= '<h3>' . $event['title'] . '</h3>';
+												$html .= '<h3>' . stripslashes( $event['title'] ) . '</h3>';
 										
 												$html .= '<span class="subtitle">';
 													$html .= $this->format_date( $event['date'] );
@@ -958,7 +958,7 @@ class MF_Timeline {
 											$html .= '</div>';
 									
 											$html .= '<div class="event_content">';
-												$html .= apply_filters( 'the_content', $this->format_text( $event['content'] ) );
+												$html .= apply_filters( 'the_content', $this->format_text( stripslashes( $event['content'] ) ) );
 											$html .= '</div>';
 										$html .= '</div>';
 									$html .= '</li>';

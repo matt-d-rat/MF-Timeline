@@ -34,3 +34,14 @@ ul.categorychecklist {
 	border-bottom: 1px solid #CCC;
 	padding-bottom: 0;
 }
+
+#editorcontainer textarea {
+	-moz-box-sizing: border-box;
+	border-right: 1px solid #d9d9d9;
+    font-family: Consolas,Monaco,monospace;
+    line-height: 150%;
+    outline: medium none;
+    padding: 6px;
+    resize: vertical;
+	width: 100%;
+}

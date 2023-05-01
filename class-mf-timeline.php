@@ -49,7 +49,7 @@ class MF_Timeline {
 		global $mf_timeline_db_version;
 		register_setting( 'mf_timeline_settings', 'mf_timeline', array( &$this, 'validate_settings' ) );
 		
-		wp_register_script( 'jquery-ui', ("https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"), false, '1.8.16' );
+		wp_register_script( 'jquery-ui', ("https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.4/jquery-ui.min.js"), false, '1.12.4' );
 		wp_register_script( 'mf_timeline_admin_js', plugins_url( 'scripts/js/jquery.mf_timeline_admin.min.js', __FILE__ ), true );
 		wp_register_style( 'mf_timeline_admin_styles', plugins_url( 'styles/admin.min.css', __FILE__ ) );
 		wp_register_style( 'jquery-ui', plugins_url( 'styles/jquery-ui/theme-wordpress.css', __FILE__ ) );
